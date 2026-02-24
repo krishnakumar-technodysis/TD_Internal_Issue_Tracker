@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "888462818841",
+    "project_id": "td-issue-tracker",
+    "storage_bucket": "td-issue-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888462818841:android:af401cb8a35d8511ebb488",
+        "android_client_info": {
+          "package_name": "com.example.internal_issue_tracking_portal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "888462818841-clp41rvh0dn0hl15i09pd413fgdccteu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC64XQaP4IY50YUohffIhf3aNAHwCgDOoM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "888462818841-clp41rvh0dn0hl15i09pd413fgdccteu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

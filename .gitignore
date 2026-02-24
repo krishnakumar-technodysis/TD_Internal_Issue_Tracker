@@ -1,0 +1,98 @@
+# ==============================
+# OS / SYSTEM FILES
+# ==============================
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+
+# ==============================
+# IDE FILES
+# ==============================
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VSCode (keep if you want shared settings)
+.vscode/
+
+# ==============================
+# FLUTTER / DART
+# ==============================
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+**/doc/api/
+
+# Generated files
+*.lock
+!pubspec.lock   # keep lock for apps (remove ! if package)
+
+# ==============================
+# ANDROID
+# ==============================
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+
+# ==============================
+# IOS
+# ==============================
+ios/Flutter/.last_build_id
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/App.framework
+
+# Xcode
+ios/Runner.xcworkspace/
+ios/DerivedData/
+*.xcuserstate
+
+# ==============================
+# MACOS
+# ==============================
+macos/Pods/
+macos/DerivedData/
+
+# ==============================
+# WINDOWS
+# ==============================
+windows/flutter/ephemeral/
+
+# ==============================
+# LINUX
+# ==============================
+linux/flutter/ephemeral/
+
+# ==============================
+# WEB
+# ==============================
+web/flutter_service_worker.js
+web/assets/AssetManifest.json
+web/assets/FontManifest.json
+
+# ==============================
+# SYMBOLICATION / OBFUSCATION
+# ==============================
+app.*.symbols
+app.*.map.json
+
+# ==============================
+# MISC
+# ==============================
+.history
+.svn/
+.atom/
+.buildlog/
+migrate_working_dir/
