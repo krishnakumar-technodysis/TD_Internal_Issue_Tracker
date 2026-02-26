@@ -1,6 +1,7 @@
-// lib/presentation/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:issue_tracker/presentation/widgets/app_button.dart';
+import 'package:issue_tracker/presentation/widgets/app_image.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import 'auth_viewmodel.dart';
@@ -15,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey   = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController(text: 'admin@technodysis.com');
-  final _passCtrl  = TextEditingController(text: '123456');
+  final _passCtrl  = TextEditingController(text: 'admin@1234');
   bool _obscure    = true;
 
   @override
@@ -33,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final isWide = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
-      backgroundColor: AppTheme.ink,
+      backgroundColor: AppTheme.blueDim,
       body: Stack(children: [
         // Background radial glows
         Positioned(top: -100, left: -100,
@@ -118,41 +119,39 @@ class _BrandPanel extends StatelessWidget {
         children: [
           // Brand mark
           Row(children: [
-            Container(width: 40, height: 40,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                gradient: const LinearGradient(
-                  colors: [AppTheme.accent, AppTheme.blue]),
-              ),
-              child: const Center(
-                child: Text('⚡', style: TextStyle(fontSize: 20)))),
-            const SizedBox(width: 12),
+            const AppImage.asset(
+              'assets/images/td_logo.png',
+              width: 40, height: 40,
+              shape: AppImageShape.rectangle,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 15,),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('TECHNODYSIS',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.cabin(
                   fontWeight: FontWeight.w800, fontSize: 18,
-                  color: AppTheme.textColor)),
+                  color: Colors.white70)),
               const Text('Issue Tracker',
                 style: TextStyle(
-                  fontSize: 11, color: AppTheme.textMuted, letterSpacing: 1)),
+                  fontSize: 11, color: Colors.white70, letterSpacing: 1)),
             ]),
           ]),
           const SizedBox(height: 40),
           RichText(text: TextSpan(
-            style: GoogleFonts.syne(
+            style: GoogleFonts.cabin(
               fontSize: 26, fontWeight: FontWeight.w700,
-              color: AppTheme.textColor, height: 1.35),
-            children: [
-              const TextSpan(text: 'Track issues.\nShip '),
+              color: Colors.white70, height: 1.35),
+            children: const [
+              TextSpan(text: 'Track issues.\nShip '),
               TextSpan(text: 'faster.',
-                style: const TextStyle(color: AppTheme.accent)),
+                style: TextStyle(color: AppTheme.accent)),
             ],
           )),
           const SizedBox(height: 14),
           const Text(
             'A centralized internal portal for managing technical issues, root cause analysis, and resolution tracking across all client systems.',
             style: TextStyle(
-              fontSize: 13, color: AppTheme.textMuted, height: 1.65)),
+              fontSize: 13, color: AppTheme.textDim, height: 1.65)),
           const SizedBox(height: 32),
           ...[
             'Real-time issue tracking across all clients',
@@ -165,20 +164,20 @@ class _BrandPanel extends StatelessWidget {
               Container(width: 20, height: 20,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppTheme.accent.withOpacity(0.12),
+                  color: AppTheme.accent,
                   border: Border.all(color: AppTheme.accent)),
                 child: const Center(
                   child: Text('✓',
-                    style: TextStyle(fontSize: 10, color: AppTheme.accent)))),
+                    style: TextStyle(fontSize: 10, color: AppTheme.textDim)))),
               const SizedBox(width: 10),
               Expanded(child: Text(f,
                 style: const TextStyle(
-                  fontSize: 12.5, color: AppTheme.textMuted))),
+                  fontSize: 12.5, color: AppTheme.textDim))),
             ]),
           )),
           const SizedBox(height: 32),
-          const Text('© 2025 Technodysis • Internal use only',
-            style: TextStyle(fontSize: 11, color: AppTheme.textDim)),
+          const Text('© Technodysis PVT LTD • All Rights Reserved.',
+            style: TextStyle(fontSize: 11, color: Colors.white)),
         ],
       ),
     );
@@ -216,7 +215,7 @@ class _FormPanel extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Welcome back',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.cabin(
                 fontSize: 22, fontWeight: FontWeight.w700,
                 color: AppTheme.textColor)),
             const SizedBox(height: 4),
@@ -225,7 +224,7 @@ class _FormPanel extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Email
-            _FieldLabel('EMAIL ADDRESS'),
+            const _FieldLabel('EMAIL ADDRESS'),
             const SizedBox(height: 6),
             TextFormField(
               controller: emailCtrl,
@@ -240,7 +239,7 @@ class _FormPanel extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Password
-            _FieldLabel('PASSWORD'),
+            const _FieldLabel('PASSWORD'),
             const SizedBox(height: 6),
             TextFormField(
               controller: passCtrl,
@@ -263,17 +262,6 @@ class _FormPanel extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Remember / Forgot
-            Row(children: [
-              const SizedBox.shrink(),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Text('Forgot password?',
-                  style: TextStyle(fontSize: 12.5, color: AppTheme.accent))),
-            ]),
-            const SizedBox(height: 24),
-
             // Error
             if (vm.errorMessage != null)
               Container(
@@ -294,49 +282,30 @@ class _FormPanel extends StatelessWidget {
                 ]),
               ),
 
+            const SizedBox(height: 20),
             // Sign in button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: vm.state == AuthState.loading ? null : onLogin,
-                child: vm.state == AuthState.loading
-                    ? const SizedBox(height: 18, width: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.ink))
-                    : const Text('Sign In  →'),
-              ),
+              height: 40,
+              child: AppButton.wide(
+                label: 'Sign In  →',
+                loading: vm.state == AuthState.loading,
+                onPressed: onLogin,
+              )
             ),
             const SizedBox(height: 20),
 
             // Divider
-            Row(children: [
-              const Expanded(child: Divider()),
+            const Row(children: [
+              Expanded(child: Divider()),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('or',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11, color: AppTheme.textDim))),
-              const Expanded(child: Divider()),
+              Expanded(child: Divider()),
             ]),
             const SizedBox(height: 16),
-
-            // Demo credentials
-            Row(children: [
-              Expanded(child: _DemoCard(
-                role: 'Admin',
-                email: 'admin@technodysis.com',
-                color: AppTheme.accent,
-                onTap: () {/* fill */ },
-              )),
-              const SizedBox(width: 10),
-              Expanded(child: _DemoCard(
-                role: 'User',
-                email: 'user@technodysis.com',
-                color: AppTheme.blue,
-                onTap: () {},
-              )),
-            ]),
-            const SizedBox(height: 24),
 
             Center(child: RichText(text: TextSpan(
               style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
@@ -344,7 +313,7 @@ class _FormPanel extends StatelessWidget {
                 const TextSpan(text: "Don't have an account? "),
                 WidgetSpan(child: GestureDetector(
                   onTap: onRegister,
-                  child: const Text('Request access',
+                  child: const Text('  Register Here',
                     style: TextStyle(
                       fontSize: 13, color: AppTheme.accent,
                       fontWeight: FontWeight.w500)),
@@ -356,40 +325,6 @@ class _FormPanel extends StatelessWidget {
       ),
     );
   }
-}
-
-class _DemoCard extends StatelessWidget {
-  final String role, email;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _DemoCard({
-    required this.role, required this.email,
-    required this.color, required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppTheme.inkSoft,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(role,
-          style: const TextStyle(
-            fontSize: 10.5, color: AppTheme.textMuted)),
-        const SizedBox(height: 2),
-        Text(email,
-          style: TextStyle(
-            fontSize: 11.5, fontWeight: FontWeight.w600, color: color),
-          overflow: TextOverflow.ellipsis),
-      ]),
-    ),
-  );
 }
 
 class _FieldLabel extends StatelessWidget {

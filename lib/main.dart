@@ -16,6 +16,9 @@ import 'presentation/issues/create_issue_screen.dart';
 import 'presentation/issues/history_screen.dart';
 import 'domain/entities/issue_entity.dart';
 
+// Global key — accessible anywhere, never tied to a widget's lifecycle
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -80,8 +83,43 @@ class TechnodysisApp extends StatelessWidget {
       );
 }
 
-class _AppRouter extends StatelessWidget {
+class _AppRouter extends StatefulWidget {
   const _AppRouter();
+
+  @override
+  State<_AppRouter> createState() => _AppRouterState();
+}
+
+class _AppRouterState extends State<_AppRouter> {
+  late AuthViewModel _authVm;
+  bool _listenerAdded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_listenerAdded) {
+      _authVm = context.read<AuthViewModel>();
+      _authVm.addListener(_onAuthChanged);
+      _listenerAdded = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _authVm.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    // Use global navigatorKey — completely safe, no context needed
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    if (_authVm.state == AuthState.unauthenticated) {
+      nav.pushNamedAndRemoveUntil('/login', (_) => false);
+    } else if (_authVm.state == AuthState.authenticated) {
+      nav.pushNamedAndRemoveUntil('/dashboard', (_) => false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +128,8 @@ class _AppRouter extends StatelessWidget {
       case AuthState.initial:
         return const Scaffold(
             backgroundColor: AppTheme.ink,
-            body: Center(child: CircularProgressIndicator(color: AppTheme.accent)));
+            body: Center(
+                child: CircularProgressIndicator(color: AppTheme.accent)));
       case AuthState.authenticated:
         return const DashboardScreen();
       default:
