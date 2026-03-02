@@ -49,7 +49,7 @@ class _Badge extends StatelessWidget {
             const SizedBox(width: 5),
           ],
           Text(label,
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.cabin(
               fontSize: 11, fontWeight: FontWeight.w600, color: color)),
         ],
       ),

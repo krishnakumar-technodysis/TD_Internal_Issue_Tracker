@@ -8,36 +8,42 @@ class UserModel extends UserEntity {
     required super.email,
     required super.displayName,
     required super.role,
+    required super.status,
+    required super.department,
     required super.createdAt,
   });
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return UserModel(
-      uid: doc.id,
-      email: data['email'] ?? '',
+      uid:         doc.id,
+      email:       data['email']       ?? '',
       displayName: data['displayName'] ?? '',
-      role: data['role'] ?? 'user',
+      role:        data['role']        ?? 'user',
+      status:      data['status']      ?? 'pending',
+      department:  data['department']  ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
   factory UserModel.fromMap(String uid, Map<String, dynamic> data) {
     return UserModel(
-      uid: uid,
-      email: data['email'] ?? '',
+      uid:         uid,
+      email:       data['email']       ?? '',
       displayName: data['displayName'] ?? '',
-      role: data['role'] ?? 'user',
+      role:        data['role']        ?? 'user',
+      status:      data['status']      ?? 'pending',
+      department:  data['department']  ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'email': email,
-      'displayName': displayName,
-      'role': role,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
+  Map<String, dynamic> toMap() => {
+    'email':       email,
+    'displayName': displayName,
+    'role':        role,
+    'status':      status,
+    'department':  department,
+    'createdAt':   Timestamp.fromDate(createdAt),
+  };
 }

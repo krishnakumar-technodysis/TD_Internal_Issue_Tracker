@@ -35,51 +35,78 @@ class StatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppTheme.border),
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Top accent bar
-            Positioned(top: 0, left: 0, right: 0,
-              child: Container(
-                height: 2,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [accentColor, accentColorEnd]),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                ),
+
+            // ── Top accent bar ──────────────────────────
+            Container(
+              height: 3,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                    colors: [accentColor, accentColorEnd]),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(9)),
               ),
             ),
-            // Background emoji
-            Positioned(right: 14, top: 14,
-              child: Text(emoji,
-                style: TextStyle(fontSize: 30,
-                  color: Colors.white.withOpacity(0.05)))),
-            // Content
+
+            // ── Content ─────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title.toUpperCase(),
+
+                  // Title
+                  Text(
+                    title.toUpperCase(),
                     style: const TextStyle(
-                      fontSize: 10.5, fontWeight: FontWeight.w600,
-                      color: AppTheme.textMuted, letterSpacing: 0.8)),
-                  const SizedBox(height: 10),
-                  Text(value,
-                    style: GoogleFonts.syne(
-                      fontSize: 32, fontWeight: FontWeight.w800,
-                      color: AppTheme.textColor, letterSpacing: -1)),
+                        fontSize: 10, fontWeight: FontWeight.w600,
+                        color: AppTheme.textMuted, letterSpacing: 0.8),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                   const SizedBox(height: 6),
-                  Row(children: [
-                    Icon(
-                      trendUp ? Icons.arrow_upward : Icons.remove,
-                      size: 11,
-                      color: trendUp ? AppTheme.green : AppTheme.textDim,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(trend,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: trendUp ? AppTheme.green : AppTheme.textDim)),
-                  ]),
+
+                  // Value
+                  Text(
+                    value,
+                    style: GoogleFonts.dmSans(
+                        fontSize: 26, fontWeight: FontWeight.w800,
+                        color: AppTheme.textColor, letterSpacing: -0.5),
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Trend
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        trendUp
+                            ? Icons.arrow_upward_rounded
+                            : Icons.remove,
+                        size: 11,
+                        color: trendUp
+                            ? AppTheme.green
+                            : AppTheme.textDim,
+                      ),
+                      const SizedBox(width: 3),
+                      Flexible(
+                        child: Text(
+                          trend,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: trendUp
+                                  ? AppTheme.green
+                                  : AppTheme.textDim),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

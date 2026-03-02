@@ -1,5 +1,8 @@
 // lib/core/constants/app_constants.dart
 class AppConstants {
+  // Super admin — hidden from all user management screens
+  static const String superAdminEmail = 'admin@technodysis.com';
+
   static const String issuesCollection = 'issues';
   static const String usersCollection  = 'users';
   static const String roleAdmin = 'admin';

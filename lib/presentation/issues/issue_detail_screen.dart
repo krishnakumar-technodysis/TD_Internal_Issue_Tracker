@@ -62,7 +62,7 @@ class IssueDetailScreen extends StatelessWidget {
                 ]),
                 const SizedBox(height: 8),
                 Text(issue.issueSummary,
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.cabin(
                     fontSize: 20, fontWeight: FontWeight.w700,
                     color: AppTheme.textColor, letterSpacing: -0.3)),
                 const SizedBox(height: 6),
@@ -235,7 +235,7 @@ class _DetailCard extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
         child: Text(title,
-          style: GoogleFonts.syne(
+          style: GoogleFonts.cabin(
             fontSize: 14, fontWeight: FontWeight.w600,
             color: AppTheme.textColor))),
       const Divider(height: 1),

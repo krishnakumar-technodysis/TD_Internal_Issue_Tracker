@@ -1,6 +1,7 @@
 // lib/presentation/issues/issue_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:issue_tracker/presentation/widgets/issue_data_grid.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -8,6 +9,7 @@ import '../../domain/entities/issue_entity.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/badges.dart';
+import '../widgets/app_button.dart';
 import '../issues/issue_viewmodel.dart';
 import '../issues/issue_detail_screen.dart';
 
@@ -31,157 +33,176 @@ class _IssueListScreenState extends State<IssueListScreen> {
     return AppShell(
       activePage: SidebarPage.issues,
       child: Column(children: [
-        // Toolbar
+
+        // ── Header ────────────────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
           decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AppTheme.border))),
+              border: Border(bottom: BorderSide(color: AppTheme.border))),
           child: Row(children: [
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('All Issues',
-                style: GoogleFonts.syne(
-                  fontSize: 22, fontWeight: FontWeight.w700,
-                  color: AppTheme.textColor, letterSpacing: -0.5)),
-              const SizedBox(height: 4),
-              Text('${vm.allIssues.length} total issues across all clients',
-                style: const TextStyle(
-                  fontSize: 12.5, color: AppTheme.textMuted)),
+                  style: GoogleFonts.cabin(
+                      fontSize: 22, fontWeight: FontWeight.w700,
+                      color: AppTheme.textColor, letterSpacing: -0.5)),
+              const SizedBox(height: 5),
+              Wrap(spacing: 12, children: [
+                _StatPill('${vm.allIssues.length}', 'total', AppTheme.textMuted),
+                if (vm.openIssues > 0)
+                  _StatPill('${vm.openIssues}', 'open', AppTheme.orange),
+                if (vm.inProgressIssues > 0)
+                  _StatPill('${vm.inProgressIssues}', 'in progress', AppTheme.purple),
+                if (vm.criticalIssues > 0)
+                  _StatPill('${vm.criticalIssues}', 'critical', AppTheme.red),
+              ]),
             ]),
             const Spacer(),
-            ElevatedButton.icon(
+            AppButton(
+              label: 'New Issue',
+              icon: Icons.add,
               onPressed: () => Navigator.pushNamed(context, '/create'),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('New Issue'),
             ),
           ]),
         ),
 
-        // Search & filters
+        // ── Search & Filters ──────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppTheme.card,
-            border: Border(bottom: BorderSide(color: AppTheme.border))),
-          child: Row(children: [
-            // Search
-            Expanded(
-              flex: 3,
-              child: Container(
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.inkSoft,
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: vm.setSearch,
-                  style: const TextStyle(
-                    fontSize: 13, color: AppTheme.textColor),
-                  decoration: const InputDecoration(
-                    hintText: 'Search by ID, summary, client...',
-                    prefixIcon: Icon(Icons.search, size: 16, color: AppTheme.textDim),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                    isDense: true,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            _FilterDrop(
-              label: 'Status', value: vm.filterStatus,
-              items: const ['', ...AppConstants.statuses],
-              onChanged: vm.setFilterStatus,
-            ),
-            const SizedBox(width: 8),
-            _FilterDrop(
-              label: 'Client', value: vm.filterCustomer,
-              items: ['', ...AppConstants.customers],
-              onChanged: vm.setFilterCustomer,
-            ),
-            const SizedBox(width: 8),
-            _FilterDrop(
-              label: 'Priority', value: vm.filterPriority,
-              items: ['', ...AppConstants.priorities],
-              onChanged: vm.setFilterPriority,
-            ),
-            const SizedBox(width: 8),
-            if (vm.filterStatus.isNotEmpty || vm.filterCustomer.isNotEmpty ||
-                vm.filterPriority.isNotEmpty || _searchCtrl.text.isNotEmpty)
-              GestureDetector(
-                onTap: () { vm.clearFilters(); _searchCtrl.clear(); },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('Clear', style: TextStyle(
-                    fontSize: 12, color: AppTheme.accent))),
-              ),
-          ]),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+          decoration: BoxDecoration(
+              color: AppTheme.inkSoft.withOpacity(0.5),
+              border: const Border(
+                  bottom: BorderSide(color: AppTheme.border))),
+          child: LayoutBuilder(builder: (_, box) {
+            final isWide = box.maxWidth > 700;
+            final widgets = _buildFilters(vm);
+            return isWide
+                ? Row(children: widgets)
+                : Wrap(spacing: 8, runSpacing: 8, children: widgets);
+          }),
         ),
 
-        // Table header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: const BoxDecoration(
-            color: Color(0x06FFFFFF),
-            border: Border(bottom: BorderSide(color: AppTheme.border))),
-          child: _TableHeader(),
-        ),
-
-        // Issues
         Expanded(
           child: vm.issues.isEmpty
-              ? _EmptyState()
-              : ListView.builder(
-                  itemCount: vm.issues.length,
-                  itemBuilder: (ctx, i) => _IssueRow(
-                    issue: vm.issues[i],
-                    onTap: () => Navigator.push(ctx,
-                      MaterialPageRoute(builder: (_) =>
-                        IssueDetailScreen(issue: vm.issues[i]))),
-                    onEdit: () => Navigator.pushNamed(ctx, '/edit',
-                      arguments: vm.issues[i]),
-                  ),
+              ? const _EmptyState()
+              : Expanded(
+            child: IssueDataGrid(
+              issues: vm.issues,
+              onTap: (issue) => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => IssueDetailScreen(issue: issue),
                 ),
+              ),
+              onEdit: (issue) =>
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => IssueDetailScreen(issue: issue),
+                    ),
+                  ),
+            ),
+          ),
         ),
 
-        // Pagination bar
+        // ── Footer ────────────────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
           decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppTheme.border))),
-          child: Row(children: [
-            Text('Showing ${vm.issues.length} of ${vm.allIssues.length} issues',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-            const Spacer(),
-            ...List.generate(3, (i) => Container(
-              margin: const EdgeInsets.only(left: 4),
-              width: 30, height: 30,
-              decoration: BoxDecoration(
-                color: i == 0 ? AppTheme.accent : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: Center(child: Text('${i + 1}',
-                style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600,
-                  color: i == 0 ? AppTheme.ink : AppTheme.textMuted))),
-            )),
-          ]),
+              border: Border(top: BorderSide(color: AppTheme.border))),
+          child: Text(
+              vm.issues.length == vm.allIssues.length
+                  ? 'Showing all ${vm.issues.length} issue${vm.issues.length != 1 ? "s" : ""}'
+                  : 'Showing ${vm.issues.length} of ${vm.allIssues.length} issues',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textDim)),
         ),
       ]),
     );
   }
+
+  List<Widget> _buildFilters(IssueViewModel vm) => [
+    Expanded(
+      flex: 4,
+      child: _SearchBox(
+        controller: _searchCtrl,
+        onChanged: vm.setSearch,
+      ),
+    ),
+    const SizedBox(width: 10),
+    _FilterChip(
+      label: 'Status', value: vm.filterStatus,
+      items: const ['', ...AppConstants.statuses],
+      onChanged: vm.setFilterStatus,
+    ),
+    const SizedBox(width: 8),
+    _FilterChip(
+      label: 'Client', value: vm.filterCustomer,
+      items: ['', ...AppConstants.customers],
+      onChanged: vm.setFilterCustomer,
+    ),
+    const SizedBox(width: 8),
+    _FilterChip(
+      label: 'Priority', value: vm.filterPriority,
+      items: ['', ...AppConstants.priorities],
+      onChanged: vm.setFilterPriority,
+    ),
+    if (vm.filterStatus.isNotEmpty || vm.filterCustomer.isNotEmpty ||
+        vm.filterPriority.isNotEmpty || _searchCtrl.text.isNotEmpty) ...[
+      const SizedBox(width: 6),
+      GestureDetector(
+        onTap: () { vm.clearFilters(); _searchCtrl.clear(); },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: AppTheme.border)),
+          child: const Text('✕  Clear',
+              style: TextStyle(
+                  fontSize: 12, color: AppTheme.textMuted,
+                  fontWeight: FontWeight.w500)),
+        ),
+      ),
+    ],
+  ];
 }
 
-class _FilterDrop extends StatelessWidget {
+// ── Search box ────────────────────────────────────────────────────────
+class _SearchBox extends StatelessWidget {
+  final TextEditingController controller;
+  final void Function(String) onChanged;
+  const _SearchBox({required this.controller, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 38,
+    decoration: BoxDecoration(
+      color: AppTheme.inkSoft,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppTheme.border),
+    ),
+    child: TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: const TextStyle(fontSize: 13, color: AppTheme.textColor),
+      decoration: const InputDecoration(
+        hintText: 'Search by ID, summary, client…',
+        prefixIcon: Icon(Icons.search_rounded,
+            size: 17, color: AppTheme.textDim),
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: EdgeInsets.symmetric(vertical: 11),
+        isDense: true,
+      ),
+    ),
+  );
+}
+
+// ── Filter chip dropdown ──────────────────────────────────────────────
+class _FilterChip extends StatelessWidget {
   final String label, value;
   final List<String> items;
   final void Function(String) onChanged;
-
-  const _FilterDrop({
+  const _FilterChip({
     required this.label, required this.value,
     required this.items, required this.onChanged,
   });
@@ -190,27 +211,36 @@ class _FilterDrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = value.isNotEmpty;
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: active ? AppTheme.accent.withOpacity(0.1) : AppTheme.inkSoft,
-        borderRadius: BorderRadius.circular(7),
+        color: active
+            ? AppTheme.accent.withOpacity(0.1)
+            : AppTheme.inkSoft,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: active ? AppTheme.accent : AppTheme.border),
+            color: active
+                ? AppTheme.accent.withOpacity(0.5)
+                : AppTheme.border),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          dropdownColor: AppTheme.inkSoft,
+          dropdownColor: AppTheme.inkMid,
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded,
+              size: 15,
+              color: active ? AppTheme.accent : AppTheme.textDim),
           style: TextStyle(
-            fontSize: 12, color: active ? AppTheme.accent : AppTheme.textMuted),
-          icon: Icon(Icons.keyboard_arrow_down,
-            size: 14,
-            color: active ? AppTheme.accent : AppTheme.textDim),
-          items: items.map((i) => DropdownMenuItem(
-            value: i,
-            child: Text(i.isEmpty ? label : i,
-              style: const TextStyle(fontSize: 12)),
+              fontSize: 12.5,
+              color: active ? AppTheme.accent : AppTheme.textMuted),
+          items: items.map((v) => DropdownMenuItem(
+            value: v,
+            child: Text(
+                v.isEmpty ? label : v,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    color: v.isEmpty ? AppTheme.textDim : AppTheme.textColor)),
           )).toList(),
           onChanged: (v) => onChanged(v ?? ''),
         ),
@@ -219,29 +249,17 @@ class _FilterDrop extends StatelessWidget {
   }
 }
 
-class _TableHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const s = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600,
-      color: AppTheme.textDim, letterSpacing: 0.6);
-    return Row(children: const [
-      SizedBox(width: 90, child: Text('ID', style: s)),
-      Expanded(flex: 4, child: Text('SUMMARY', style: s)),
-      SizedBox(width: 90, child: Text('CLIENT', style: s)),
-      SizedBox(width: 110, child: Text('TECHNOLOGY', style: s)),
-      SizedBox(width: 85, child: Text('PRIORITY', style: s)),
-      SizedBox(width: 130, child: Text('STATUS', style: s)),
-      SizedBox(width: 110, child: Text('ASSIGNED TO', style: s)),
-      SizedBox(width: 80, child: Text('OPENED', style: s)),
-      SizedBox(width: 60),
-    ]);
-  }
-}
 
+
+// ── Issue row ─────────────────────────────────────────────────────────
 class _IssueRow extends StatefulWidget {
   final IssueEntity issue;
+  final bool isEven;
   final VoidCallback onTap, onEdit;
-  const _IssueRow({required this.issue, required this.onTap, required this.onEdit});
+  const _IssueRow({
+    required this.issue, required this.isEven,
+    required this.onTap, required this.onEdit,
+  });
 
   @override
   State<_IssueRow> createState() => _IssueRowState();
@@ -253,100 +271,240 @@ class _IssueRowState extends State<_IssueRow> {
   @override
   Widget build(BuildContext context) {
     final issue = widget.issue;
+    final bg = _hover
+        ? AppTheme.inkMid.withOpacity(0.7)
+        : widget.isEven
+        ? AppTheme.inkSoft.withOpacity(0.35)
+        : Colors.transparent;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
       onExit:  (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
           decoration: BoxDecoration(
-            color: _hover ? Colors.white.withOpacity(0.025) : Colors.transparent,
+            color: bg,
             border: const Border(
-              bottom: BorderSide(color: Color(0x08FFFFFF))),
+                bottom: BorderSide(color: Color(0x18FFFFFF))),
           ),
-          child: Row(children: [
-            SizedBox(width: 90,
-              child: Text(issue.issueId,
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 11.5, color: AppTheme.accent,
-                  fontWeight: FontWeight.w500))),
-            Expanded(flex: 4, child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(issue.issueSummary,
-                  style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500,
-                    color: AppTheme.textColor),
-                  overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text('${issue.technology} • ${issue.rootCauseCategory}',
-                  style: const TextStyle(
-                    fontSize: 11, color: AppTheme.textMuted)),
-              ],
-            )),
-            SizedBox(width: 90, child: TagChip(label: issue.customer)),
-            SizedBox(width: 110,
-              child: Text(issue.technology,
-                style: const TextStyle(
-                  fontSize: 11.5, color: AppTheme.textMuted))),
-            SizedBox(width: 85,
-              child: PriorityBadge(priority: issue.priority)),
-            SizedBox(width: 130,
-              child: StatusBadge(status: issue.status)),
-            SizedBox(width: 110,
-              child: Text(issue.assignedTo,
-                style: const TextStyle(
-                  fontSize: 12, color: AppTheme.textColor),
-                overflow: TextOverflow.ellipsis)),
-            SizedBox(width: 80,
-              child: Text(
-                _fmtDate(issue.createdAt),
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 11, color: AppTheme.textDim))),
-            SizedBox(width: 60,
-              child: TextButton(
-                onPressed: widget.onEdit,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: Size.zero,
-                ),
-                child: const Text('Edit',
-                  style: TextStyle(
-                    fontSize: 12, color: AppTheme.textMuted)),
-              )),
-          ]),
+          padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 13),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // ID
+              SizedBox(width: 80,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(issue.issueId,
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 11,
+                              color: AppTheme.accent,
+                              fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  )),
+
+              // Summary + sub-line
+              Expanded(flex: 5,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(issue.issueSummary,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500,
+                              color: AppTheme.textColor, height: 1.4),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis),
+                      if (issue.processName.trim().isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(issue.processName,
+                            style: const TextStyle(
+                                fontSize: 11.5, color: AppTheme.textDim),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                      ],
+                    ],
+                  )),
+
+              const SizedBox(width: 10),
+
+              // Client
+              SizedBox(width: 110,
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: TagChip(label: issue.customer))),
+
+              // Priority
+              SizedBox(width: 100,
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: PriorityBadge(priority: issue.priority))),
+
+              // Status
+              SizedBox(width: 140,
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: StatusBadge(status: issue.status))),
+
+              // Assigned To
+              SizedBox(width: 130,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: issue.assignedTo.isEmpty
+                        ? const Text('—',
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.textDim))
+                        : Row(children: [
+                      _InitialAvatar(name: issue.assignedTo),
+                      const SizedBox(width: 7),
+                      Expanded(child: Text(issue.assignedTo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 12.5, color: AppTheme.textColor))),
+                    ]),
+                  )),
+
+              // Opened
+              SizedBox(width: 90,
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(_fmtDate(issue.createdAt),
+                          style: GoogleFonts.jetBrainsMono(
+                              fontSize: 10.5, color: AppTheme.textDim)))),
+
+              // Edit — visible only on hover
+              SizedBox(width: 50,
+                  child: AnimatedOpacity(
+                    opacity: _hover ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 120),
+                    child: TextButton(
+                      onPressed: widget.onEdit,
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Edit',
+                          style: TextStyle(
+                              fontSize: 12, color: AppTheme.accent,
+                              fontWeight: FontWeight.w500)),
+                    ),
+                  )),
+            ],
+          ),
         ),
       ),
     );
   }
 
   String _fmtDate(DateTime d) {
-    final now = DateTime.now();
-    if (d.year == now.year && d.month == now.month && d.day == now.day)
-      return 'Today';
-    if (d.year == now.year && d.month == now.month && d.day == now.day - 1)
-      return 'Yesterday';
+    final diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 1)  return 'Just now';
+    if (diff.inHours   < 24 && d.day == DateTime.now().day) return 'Today';
+    if (diff.inDays    == 1) return 'Yesterday';
+    if (diff.inDays    <  7) return '${diff.inDays}d ago';
     return '${d.day} ${_months[d.month - 1]}';
   }
 
-  static const _months = ['Jan','Feb','Mar','Apr','May','Jun',
-                           'Jul','Aug','Sep','Oct','Nov','Dec'];
+  static const _months = [
+    'Jan','Feb','Mar','Apr','May','Jun',
+    'Jul','Aug','Sep','Oct','Nov','Dec'];
 }
 
+// ── Initial avatar ────────────────────────────────────────────────────
+class _InitialAvatar extends StatelessWidget {
+  final String name;
+  const _InitialAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name.trim().split(' ').length >= 2
+        ? '${name.split(' ').first[0]}${name.split(' ').last[0]}'.toUpperCase()
+        : name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
+    final colors = [
+      [AppTheme.blue,   AppTheme.accent],
+      [AppTheme.purple, AppTheme.blue],
+      [AppTheme.orange, AppTheme.yellow],
+      [AppTheme.green,  AppTheme.accent],
+    ];
+    final ci = name.codeUnitAt(0) % colors.length;
+    return Container(
+      width: 24, height: 24,
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          gradient: LinearGradient(
+              colors: colors[ci],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight)),
+      child: Center(child: Text(initials,
+          style: const TextStyle(
+              fontSize: 9.5, fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A)))),
+    );
+  }
+}
+
+// ── Stat pill ─────────────────────────────────────────────────────────
+class _StatPill extends StatelessWidget {
+  final String count, label;
+  final Color color;
+  const _StatPill(this.count, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+          width: 6, height: 6,
+          decoration: BoxDecoration(
+              color: color, shape: BoxShape.circle)),
+      const SizedBox(width: 5),
+      RichText(text: TextSpan(
+        children: [
+          TextSpan(text: count,
+              style: TextStyle(
+                  fontSize: 12.5, fontWeight: FontWeight.w600,
+                  color: color)),
+          TextSpan(text: '  $label',
+              style: const TextStyle(
+                  fontSize: 12.5, color: AppTheme.textMuted)),
+        ],
+      )),
+    ],
+  );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      const Text('📭', style: TextStyle(fontSize: 48)),
-      const SizedBox(height: 16),
+      Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+              color: AppTheme.inkSoft,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.border)),
+          child: const Center(
+              child: Text('📭', style: TextStyle(fontSize: 32)))),
+      const SizedBox(height: 18),
       Text('No issues found',
-        style: GoogleFonts.syne(
-          fontSize: 16, fontWeight: FontWeight.w600,
-          color: AppTheme.textColor)),
-      const SizedBox(height: 8),
-      const Text('Try adjusting your filters or search',
-        style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
+          style: GoogleFonts.cabin(
+              fontSize: 16, fontWeight: FontWeight.w600,
+              color: AppTheme.textColor)),
+      const SizedBox(height: 6),
+      const Text('Adjust filters or create a new issue',
+          style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
     ]),
   );
 }

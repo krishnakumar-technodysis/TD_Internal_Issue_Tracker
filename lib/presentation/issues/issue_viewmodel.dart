@@ -20,10 +20,11 @@ class IssueViewModel extends ChangeNotifier {
   String _filterCustomer = '';
   String _filterPriority = '';
 
-  List<IssueEntity> get allIssues  => _all;
-  IssueViewState    get state      => _state;
-  String?           get errorMessage => _error;
+  List<IssueEntity> get allIssues     => _all;
+  IssueViewState    get state         => _state;
+  String?           get errorMessage  => _error;
 
+  // Public filter state — read by UI to show active filters
   String get filterStatus   => _filterStatus;
   String get filterCustomer => _filterCustomer;
   String get filterPriority => _filterPriority;
@@ -42,15 +43,53 @@ class IssueViewModel extends ChangeNotifier {
     return ms && mst && mc && mp;
   }).toList();
 
-  // Stats
-  int get totalIssues    => _all.length;
-  int get openIssues     => _all.where((i) => i.isOpen).length;
-  int get resolvedIssues => _all.where((i) => i.status == 'Resolved').length;
-  int get criticalIssues => _all.where((i) => i.priority == 'Critical' && i.isOpen).length;
+  // ── Core counts ──────────────────────────────────────────────────────
+  int get totalIssues      => _all.length;
+  int get openIssues       => _all.where((i) => i.isOpen).length;
+  int get inProgressIssues => _all.where((i) => i.status == 'In Progress').length;
+  int get resolvedIssues   => _all.where((i) => i.status == 'Resolved').length;
+  int get criticalIssues   => _all.where((i) => i.priority == 'Critical' && i.isOpen).length;
+
+  // ── Dynamic trend strings (computed from real Firestore data) ─────────
+
+  /// Issues created in the current calendar month
+  String get totalTrend {
+    final now   = DateTime.now();
+    final count = _all.where((i) =>
+    i.createdAt.year  == now.year &&
+        i.createdAt.month == now.month).length;
+    return count == 0 ? 'None this month' : '$count new this month';
+  }
+
+  /// Open issues created in the last 7 days
+  String get openTrend {
+    final cutoff = DateTime.now().subtract(const Duration(days: 7));
+    final count  = _all.where((i) => i.isOpen && i.createdAt.isAfter(cutoff)).length;
+    return count == 0 ? 'None this week' : '$count new this week';
+  }
+
+  /// Resolved / total as a percentage
+  String get resolvedTrend {
+    if (_all.isEmpty) return 'No data yet';
+    final pct = (resolvedIssues / _all.length * 100).round();
+    return '$pct% resolution rate';
+  }
+
+  /// Critical open issues created today
+  String get criticalTrend {
+    final today = DateTime.now();
+    final count = _all.where((i) =>
+    i.priority == 'Critical' &&
+        i.isOpen   &&
+        i.createdAt.year  == today.year &&
+        i.createdAt.month == today.month &&
+        i.createdAt.day   == today.day).length;
+    return count == 0 ? 'None escalated today' : '$count escalated today';
+  }
 
   void listenToIssues() {
     _repo.getIssues().listen(
-      (list) { _all = list; notifyListeners(); },
+          (list) { _all = list; notifyListeners(); },
       onError: (e) { _error = e.toString(); notifyListeners(); },
     );
   }
@@ -76,6 +115,77 @@ class IssueViewModel extends ChangeNotifier {
     for (final i in _all) m[key(i)] = (m[key(i)] ?? 0) + 1;
     return m;
   }
+
+  // ── Bar chart data for Day / Week / Month / Year ─────────────────────
+
+  /// Returns list of {label, count} for the selected period
+  List<_ChartPoint> getBarChartData(ChartPeriod period) {
+    final now = DateTime.now();
+    switch (period) {
+      case ChartPeriod.day:
+      // Last 24 hours — grouped by hour (every 3h: 00,03,06...21)
+        return List.generate(8, (i) {
+          final hour  = i * 3;
+          final label = '${hour.toString().padLeft(2, '0')}h';
+          final count = _all.where((issue) {
+            final diff = now.difference(issue.createdAt);
+            return diff.inHours >= hour && diff.inHours < hour + 3;
+          }).length;
+          return _ChartPoint(label, count.toDouble());
+        });
+
+      case ChartPeriod.week:
+      // Last 7 days — grouped by day name
+        return List.generate(7, (i) {
+          final day   = now.subtract(Duration(days: 6 - i));
+          final label = _dayAbbr(day.weekday);
+          final count = _all.where((issue) =>
+          issue.createdAt.year  == day.year  &&
+              issue.createdAt.month == day.month &&
+              issue.createdAt.day   == day.day).length;
+          return _ChartPoint(label, count.toDouble());
+        });
+
+      case ChartPeriod.month:
+      // Current month — group every day into buckets of `step` days
+      // so ALL issues are captured, not just issues on the first day
+      // of each bucket.
+        final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+        final step = daysInMonth <= 15 ? 1 : (daysInMonth / 8).ceil();
+        final points = <_ChartPoint>[];
+        for (int start = 1; start <= daysInMonth; start += step) {
+          final end = (start + step - 1).clamp(1, daysInMonth);
+          final label = start == end
+              ? start.toString().padLeft(2, '0')
+              : '${start.toString().padLeft(2,'0')}–${end.toString().padLeft(2,'0')}';
+          final count = _all.where((issue) =>
+          issue.createdAt.year  == now.year  &&
+              issue.createdAt.month == now.month &&
+              issue.createdAt.day   >= start     &&
+              issue.createdAt.day   <= end).length;
+          points.add(_ChartPoint(label, count.toDouble()));
+        }
+        return points;
+
+      case ChartPeriod.year:
+      // Current year — grouped by month
+        return List.generate(12, (i) {
+          final month = i + 1;
+          final label = _monthAbbr(month);
+          final count = _all.where((issue) =>
+          issue.createdAt.year  == now.year &&
+              issue.createdAt.month == month).length;
+          return _ChartPoint(label, count.toDouble());
+        });
+    }
+  }
+
+  static String _dayAbbr(int weekday) =>
+      ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][weekday - 1];
+
+  static String _monthAbbr(int month) =>
+      ['Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec'][month - 1];
 
   Future<bool> createIssue({
     required Map<String, dynamic> data, required UserEntity by,
@@ -143,4 +253,13 @@ class IssueViewModel extends ChangeNotifier {
     try { await _repo.deleteIssue(id); return true; }
     catch (e) { _error = e.toString(); notifyListeners(); return false; }
   }
+}
+
+// ── Supporting types ──────────────────────────────────────────────────
+enum ChartPeriod { day, week, month, year }
+
+class _ChartPoint {
+  final String label;
+  final double value;
+  const _ChartPoint(this.label, this.value);
 }

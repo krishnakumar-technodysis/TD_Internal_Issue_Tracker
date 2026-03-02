@@ -56,7 +56,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: Row(children: [
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('Issue History',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.cabin(
                   fontSize: 22, fontWeight: FontWeight.w700,
                   color: AppTheme.textColor, letterSpacing: -0.5)),
               const SizedBox(height: 4),
@@ -128,7 +128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     const Text('📭', style: TextStyle(fontSize: 40)),
                     const SizedBox(height: 12),
                     Text('No history found',
-                      style: GoogleFonts.syne(
+                      style: GoogleFonts.cabin(
                         fontSize: 15, fontWeight: FontWeight.w600,
                         color: AppTheme.textColor)),
                   ]))
