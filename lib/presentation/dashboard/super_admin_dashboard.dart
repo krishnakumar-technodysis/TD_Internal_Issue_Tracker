@@ -1,4 +1,5 @@
 // lib/presentation/dashboard/super_admin_dashboard.dart
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -75,7 +76,14 @@ class SuperAdminDashboard extends StatelessWidget {
                                 projects: projects,
                                 tasks: tasks,
                                 issueVm: issueVm),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 28),
+
+                            // ── Activity chart ─────────────────────────
+                            const _SectionHeader(
+                                title: 'Issue Activity', icon: '📊'),
+                            const SizedBox(height: 12),
+                            _ActivityChart(issueVm: issueVm),
+                            const SizedBox(height: 28),
 
                             // ── Quick actions ──────────────────────────
                             const _SectionHeader(
@@ -481,6 +489,181 @@ class _OverdueList extends StatelessWidget {
       ]),
     )).toList(),
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity Bar Chart
+// ─────────────────────────────────────────────────────────────────────────────
+class _ActivityChart extends StatefulWidget {
+  final IssueViewModel issueVm;
+  const _ActivityChart({required this.issueVm});
+  @override
+  State<_ActivityChart> createState() => _ActivityChartState();
+}
+
+class _ActivityChartState extends State<_ActivityChart> {
+  ChartPeriod _period = ChartPeriod.week;
+
+  static const _tabs = [
+    (ChartPeriod.day,   'Day'),
+    (ChartPeriod.week,  'Week'),
+    (ChartPeriod.month, 'Month'),
+    (ChartPeriod.year,  'Year'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final data  = widget.issueVm.getBarChartData(_period);
+    final maxY  = data.isEmpty ? 1.0
+        : (data.map((p) => p.value).reduce((a, b) => a > b ? a : b) + 1)
+            .clamp(1.0, double.infinity);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+        // Period selector tabs
+        Row(children: [
+          Expanded(child: Text('Issues created per period',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted))),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+                color: AppTheme.inkSoft,
+                borderRadius: BorderRadius.circular(8)),
+            child: Row(mainAxisSize: MainAxisSize.min,
+              children: _tabs.map((tab) {
+                final (period, label) = tab;
+                final selected = _period == period;
+                return GestureDetector(
+                  onTap: () => setState(() => _period = period),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                        color: selected
+                            ? AppTheme.accent
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Text(label,
+                        style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: selected
+                                ? FontWeight.w700 : FontWeight.w400,
+                            color: selected
+                                ? Colors.white : AppTheme.textMuted)),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 20),
+
+        // Bar chart
+        SizedBox(
+          height: 180,
+          child: data.isEmpty
+              ? const Center(child: Text('No data',
+                  style: TextStyle(color: AppTheme.textDim)))
+              : BarChart(
+            BarChartData(
+              maxY: maxY,
+              minY: 0,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: maxY > 5 ? (maxY / 5).ceilToDouble() : 1,
+                getDrawingHorizontalLine: (_) => FlLine(
+                    color: AppTheme.border, strokeWidth: 1),
+              ),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 28,
+                    interval: maxY > 5
+                        ? (maxY / 5).ceilToDouble() : 1,
+                    getTitlesWidget: (v, _) => Text(
+                        v.toInt().toString(),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.textDim)),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    getTitlesWidget: (v, _) {
+                      final idx = v.toInt();
+                      if (idx < 0 || idx >= data.length) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(data[idx].label,
+                            style: const TextStyle(
+                                fontSize: 9.5,
+                                color: AppTheme.textDim)),
+                      );
+                    },
+                  ),
+                ),
+                rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+              ),
+              barGroups: List.generate(data.length, (i) {
+                final value = data[i].value;
+                return BarChartGroupData(x: i, barRods: [
+                  BarChartRodData(
+                    toY: value,
+                    width: data.length > 12 ? 8 : 14,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4)),
+                    color: value == 0
+                        ? AppTheme.border
+                        : AppTheme.accent,
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxY,
+                      color: AppTheme.accent.withOpacity(0.05),
+                    ),
+                  ),
+                ]);
+              }),
+              barTouchData: BarTouchData(
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => AppTheme.card,
+                  tooltipBorder: const BorderSide(color: AppTheme.border),
+                  getTooltipItem: (group, _, rod, __) => BarTooltipItem(
+                    '${data[group.x].label}\n',
+                    const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                    children: [
+                      TextSpan(
+                          text: '${rod.toY.toInt()} issues',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.accent)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

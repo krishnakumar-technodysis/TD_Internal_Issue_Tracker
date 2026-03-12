@@ -13,6 +13,7 @@ import 'package:issue_tracker/presentation/issues/issue_list_screen.dart';
 import 'package:issue_tracker/presentation/projects/create_project_screen.dart';
 import 'package:issue_tracker/presentation/projects/project_screen.dart';
 import 'package:issue_tracker/presentation/projects/project_view_model.dart';
+import 'package:issue_tracker/presentation/reports/report_screen.dart';
 import 'package:issue_tracker/presentation/setting/setting_screen.dart';
 import 'package:issue_tracker/presentation/setting/settings_view_model.dart';
 import 'package:provider/provider.dart';
@@ -53,7 +54,7 @@ class TechnodysisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsViewModel(SettingsRepositoryImpl())),
       ],
       child: MaterialApp(
-        title:                     'Technodysis — Issue Tracker',
+        title:                     'TD Internal Tracker',
         theme:                     AppTheme.theme,
         debugShowCheckedModeBanner: false,
         home: const AppRouter(),
@@ -118,6 +119,9 @@ class AppRouter extends StatelessWidget {
         return const ProjectsScreen();
       case '/settings':
         if (authVm.isAdmin) return const SettingsScreen();
+        return _roleDashboard(authVm);
+      case '/reports':
+        if (authVm.isAdmin) return const ReportScreen();
         return _roleDashboard(authVm);
       // Role-specific dashboard routes
       case '/super-dashboard':
