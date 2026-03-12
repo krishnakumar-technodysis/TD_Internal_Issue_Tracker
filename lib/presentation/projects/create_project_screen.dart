@@ -56,7 +56,8 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
     if (!_formKey.currentState!.validate()) return;
     final authVm = context.read<AuthViewModel>();
     final vm     = context.read<ProjectViewModel>();
-    final user   = authVm.currentUser!;
+    final user   = authVm.currentUser;
+    if (user == null) return;
 
     final data = {
       'name':        _nameCtrl.text.trim(),
@@ -75,7 +76,19 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
     } else {
       ok = await vm.createProject(data: data, by: user);
     }
-    if (ok && mounted) Navigator.pushNamedAndRemoveUntil(context, '/projects', (_) => false);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pushNamedAndRemoveUntil(context, '/projects', (_) => false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppTheme.red,
+        content: Text(
+          isEdit ? 'Failed to update project. Please try again.'
+                 : 'Failed to create project. Please try again.',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ));
+    }
   }
 
   Future<void> _confirmDelete() async {
