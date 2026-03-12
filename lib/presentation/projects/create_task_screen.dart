@@ -342,6 +342,29 @@ class _UserDropdown extends StatelessWidget {
                 borderSide: const BorderSide(
                     color: AppTheme.accent, width: 1.5))),
         dropdownColor: AppTheme.card,
+        // Compact single-line display in the closed field (avoids overflow)
+        selectedItemBuilder: (context) => users.map((u) => Align(
+          alignment: Alignment.centerLeft,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 24, height: 24,
+                decoration: BoxDecoration(
+                    color: AppTheme.accentBg,
+                    borderRadius: BorderRadius.circular(5)),
+                child: Center(child: Text(
+                    u.displayName.isNotEmpty
+                        ? u.displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accent)))),
+            const SizedBox(width: 8),
+            Flexible(child: Text(u.displayName,
+                style: const TextStyle(fontSize: 13,
+                    color: AppTheme.textColor, fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis)),
+          ]),
+        )).toList(),
+        // Rich 2-line display inside the open dropdown list
         items: users.map((u) => DropdownMenuItem(
           value: u.uid,
           child: Row(children: [

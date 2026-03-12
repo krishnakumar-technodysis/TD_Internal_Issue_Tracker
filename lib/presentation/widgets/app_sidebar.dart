@@ -20,6 +20,7 @@ enum SidebarPage {
   projects,
   admin,
   settings,
+  reports,
 }
 
 class AppSidebar extends StatelessWidget {
@@ -129,6 +130,11 @@ class AppSidebar extends StatelessWidget {
                   active: activePage == SidebarPage.settings,
                   onTap: () => _nav(context, SidebarPage.settings),
                 ),
+                _NavItem(
+                  icon: '📥', label: 'Download Report',
+                  active: activePage == SidebarPage.reports,
+                  onTap: () => _nav(context, SidebarPage.reports),
+                ),
               ]
 
               // ── Admin / Manager nav ────────────────────────────────────
@@ -172,6 +178,11 @@ class AppSidebar extends StatelessWidget {
                     icon: '🔧', label: 'Settings',
                     active: activePage == SidebarPage.settings,
                     onTap: () => _nav(context, SidebarPage.settings),
+                  ),
+                  _NavItem(
+                    icon: '📥', label: 'Download Report',
+                    active: activePage == SidebarPage.reports,
+                    onTap: () => _nav(context, SidebarPage.reports),
                   ),
                 ],
               ]
@@ -294,6 +305,8 @@ class AppSidebar extends StatelessWidget {
         Navigator.pushNamedAndRemoveUntil(context, '/admin',           (_) => false);
       case SidebarPage.settings:
         Navigator.pushNamedAndRemoveUntil(context, '/settings',        (_) => false);
+      case SidebarPage.reports:
+        Navigator.pushNamedAndRemoveUntil(context, '/reports',         (_) => false);
     }
   }
 }

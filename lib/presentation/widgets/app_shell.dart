@@ -59,6 +59,7 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
     SidebarPage.projects:            'Projects',
     SidebarPage.admin:               'Admin Panel',
     SidebarPage.settings:            'Settings',
+    SidebarPage.reports:             'Download Report',
   };
 
   @override
