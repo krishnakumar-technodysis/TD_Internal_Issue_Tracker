@@ -8,7 +8,18 @@ import '../issues/issue_viewmodel.dart';
 import 'app_image.dart';
 
 enum SidebarPage {
-  dashboard, issues, create, history, projects, admin, settings
+  // Role dashboards
+  userDashboard,
+  adminDashboard,
+  superAdminDashboard,
+  // Shared pages
+  dashboard,
+  issues,
+  create,
+  history,
+  projects,
+  admin,
+  settings,
 }
 
 class AppSidebar extends StatelessWidget {
@@ -22,9 +33,9 @@ class AppSidebar extends StatelessWidget {
     final authVm  = context.watch<AuthViewModel>();
     final issueVm = context.watch<IssueViewModel>();
     final user    = authVm.currentUser;
-    final isAdmin   = user?.isAdmin   ?? false;
-    final isManager = user?.isManager ?? false;
-    final canViewDash = user?.canViewDashboard ?? false;
+    final isAdmin      = user?.isAdmin       ?? false;
+    final isManager    = user?.isManager     ?? false;
+    final isSuperAdmin = user?.isSuperAdmin  ?? false;
 
     return Container(
       width: inDrawer ? double.infinity : 230,
@@ -37,7 +48,7 @@ class AppSidebar extends StatelessWidget {
         right: false,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-          // ── Logo ──────────────────────────────────────
+          // ── Logo ──────────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 12, 4),
             child: Row(children: [
@@ -71,52 +82,122 @@ class AppSidebar extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          // ── Scrollable nav ────────────────────────────
+          // ── Scrollable nav ─────────────────────────────────────────────
           Expanded(child: SingleChildScrollView(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-              // MAIN section
               _sectionLabel('MAIN'),
 
-              if (canViewDash)
-                _NavItem(icon: '📊', label: 'Dashboard',
-                    active: activePage == SidebarPage.dashboard,
-                    onTap: () => _nav(context, SidebarPage.dashboard)),
-
-              _NavItem(icon: '🐛', label: 'All Issues',
+              // ── Super Admin nav ────────────────────────────────────────
+              if (isSuperAdmin) ...[
+                _NavItem(
+                  icon: '🏠', label: 'Dashboard',
+                  active: activePage == SidebarPage.superAdminDashboard ||
+                      activePage == SidebarPage.dashboard,
+                  onTap: () => _nav(context, SidebarPage.superAdminDashboard),
+                ),
+                _NavItem(
+                  icon: '📁', label: 'Projects',
+                  active: activePage == SidebarPage.projects,
+                  onTap: () => _nav(context, SidebarPage.projects),
+                ),
+                _NavItem(
+                  icon: '🐛', label: 'All Issues',
                   badge: issueVm.allIssues.length.toString(),
                   active: activePage == SidebarPage.issues,
-                  onTap: () => _nav(context, SidebarPage.issues)),
-
-              _NavItem(icon: '➕', label: 'Create Issue',
+                  onTap: () => _nav(context, SidebarPage.issues),
+                ),
+                _NavItem(
+                  icon: '➕', label: 'Create Issue',
                   active: activePage == SidebarPage.create,
-                  onTap: () => _nav(context, SidebarPage.create)),
-
-              _NavItem(icon: '📋', label: 'History',
+                  onTap: () => _nav(context, SidebarPage.create),
+                ),
+                _NavItem(
+                  icon: '📋', label: 'History',
                   active: activePage == SidebarPage.history,
-                  onTap: () => _nav(context, SidebarPage.history)),
-
-              _NavItem(icon: '📁', label: 'Projects',
-                  active: activePage == SidebarPage.projects,
-                  onTap: () => _nav(context, SidebarPage.projects)),
-
-              // Admin/Manager only
-              if (isAdmin || isManager) ...[
+                  onTap: () => _nav(context, SidebarPage.history),
+                ),
                 const SizedBox(height: 8),
                 _sectionLabel('MANAGEMENT'),
+                _NavItem(
+                  icon: '⚙️', label: 'Admin Panel',
+                  active: activePage == SidebarPage.admin,
+                  onTap: () => _nav(context, SidebarPage.admin),
+                ),
+                _NavItem(
+                  icon: '🔧', label: 'Settings',
+                  active: activePage == SidebarPage.settings,
+                  onTap: () => _nav(context, SidebarPage.settings),
+                ),
+              ]
+
+              // ── Admin / Manager nav ────────────────────────────────────
+              else if (isAdmin || isManager) ...[
+                _NavItem(
+                  icon: '🏠', label: 'Dashboard',
+                  active: activePage == SidebarPage.adminDashboard ||
+                      activePage == SidebarPage.dashboard,
+                  onTap: () => _nav(context, SidebarPage.adminDashboard),
+                ),
+                _NavItem(
+                  icon: '📁', label: 'Projects',
+                  active: activePage == SidebarPage.projects,
+                  onTap: () => _nav(context, SidebarPage.projects),
+                ),
+                _NavItem(
+                  icon: '🐛', label: 'All Issues',
+                  badge: issueVm.allIssues.length.toString(),
+                  active: activePage == SidebarPage.issues,
+                  onTap: () => _nav(context, SidebarPage.issues),
+                ),
+                _NavItem(
+                  icon: '➕', label: 'Create Issue',
+                  active: activePage == SidebarPage.create,
+                  onTap: () => _nav(context, SidebarPage.create),
+                ),
+                _NavItem(
+                  icon: '📋', label: 'History',
+                  active: activePage == SidebarPage.history,
+                  onTap: () => _nav(context, SidebarPage.history),
+                ),
+                if (isAdmin) ...[
+                  const SizedBox(height: 8),
+                  _sectionLabel('MANAGEMENT'),
+                  _NavItem(
+                    icon: '⚙️', label: 'Admin Panel',
+                    active: activePage == SidebarPage.admin,
+                    onTap: () => _nav(context, SidebarPage.admin),
+                  ),
+                  _NavItem(
+                    icon: '🔧', label: 'Settings',
+                    active: activePage == SidebarPage.settings,
+                    onTap: () => _nav(context, SidebarPage.settings),
+                  ),
+                ],
+              ]
+
+              // ── Regular User nav ───────────────────────────────────────
+              else ...[
+                _NavItem(
+                  icon: '🏠', label: 'My Dashboard',
+                  active: activePage == SidebarPage.userDashboard ||
+                      activePage == SidebarPage.dashboard,
+                  onTap: () => _nav(context, SidebarPage.userDashboard),
+                ),
+                _NavItem(
+                  icon: '📁', label: 'My Projects',
+                  active: activePage == SidebarPage.projects,
+                  onTap: () => _nav(context, SidebarPage.projects),
+                ),
+                _NavItem(
+                  icon: '🐛', label: 'Issues',
+                  badge: issueVm.allIssues.length.toString(),
+                  active: activePage == SidebarPage.issues,
+                  onTap: () => _nav(context, SidebarPage.issues),
+                ),
               ],
 
-              if (isAdmin)
-                _NavItem(icon: '⚙️', label: 'Admin Panel',
-                    active: activePage == SidebarPage.admin,
-                    onTap: () => _nav(context, SidebarPage.admin)),
-
-              if (isAdmin)
-                _NavItem(icon: '🔧', label: 'Settings',
-                    active: activePage == SidebarPage.settings,
-                    onTap: () => _nav(context, SidebarPage.settings)),
-
-              // Status filters
+              // ── Issue status counters (visible to all) ─────────────────
               const SizedBox(height: 8),
               _sectionLabel('BY STATUS'),
               _NavItem(icon: '🔵', label: 'Open',
@@ -140,7 +221,7 @@ class AppSidebar extends StatelessWidget {
             ]),
           )),
 
-          // ── User card ─────────────────────────────────
+          // ── User card ──────────────────────────────────────────────────
           Container(
             margin: const EdgeInsets.all(10),
             padding: const EdgeInsets.all(10),
@@ -193,25 +274,31 @@ class AppSidebar extends StatelessWidget {
   void _nav(BuildContext context, SidebarPage page) {
     if (inDrawer) Navigator.pop(context);
     switch (page) {
+      case SidebarPage.superAdminDashboard:
+        Navigator.pushNamedAndRemoveUntil(context, '/super-dashboard', (_) => false);
+      case SidebarPage.adminDashboard:
+        Navigator.pushNamedAndRemoveUntil(context, '/admin-dashboard', (_) => false);
+      case SidebarPage.userDashboard:
+        Navigator.pushNamedAndRemoveUntil(context, '/user-dashboard',  (_) => false);
       case SidebarPage.dashboard:
-        Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/dashboard',       (_) => false);
       case SidebarPage.issues:
-        Navigator.pushNamedAndRemoveUntil(context, '/issues',    (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/issues',          (_) => false);
       case SidebarPage.create:
-        Navigator.pushNamedAndRemoveUntil(context, '/create',    (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/create',          (_) => false);
       case SidebarPage.history:
-        Navigator.pushNamedAndRemoveUntil(context, '/history',   (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/history',         (_) => false);
       case SidebarPage.projects:
-        Navigator.pushNamedAndRemoveUntil(context, '/projects',  (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/projects',        (_) => false);
       case SidebarPage.admin:
-        Navigator.pushNamedAndRemoveUntil(context, '/admin',     (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/admin',           (_) => false);
       case SidebarPage.settings:
-        Navigator.pushNamedAndRemoveUntil(context, '/settings',  (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/settings',        (_) => false);
     }
   }
 }
 
-// ── Nav item ──────────────────────────────────────────────
+// ── Nav item ──────────────────────────────────────────────────────────────────
 class _NavItem extends StatelessWidget {
   final String icon, label;
   final bool active;

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:issue_tracker/presentation/admin/admin_screen.dart';
 import 'package:issue_tracker/presentation/auth/login_screen.dart';
 import 'package:issue_tracker/presentation/auth/pending_approval_screen.dart';
-import 'package:issue_tracker/presentation/dashboard/dashboard_screen.dart';
+import 'package:issue_tracker/presentation/dashboard/admin_dashboard.dart';
+import 'package:issue_tracker/presentation/dashboard/super_admin_dashboard.dart';
+import 'package:issue_tracker/presentation/dashboard/user_dashboard.dart';
 import 'package:issue_tracker/presentation/issues/create_issue_screen.dart';
 import 'package:issue_tracker/presentation/issues/history_screen.dart';
 import 'package:issue_tracker/presentation/issues/issue_list_screen.dart';
@@ -54,7 +56,6 @@ class TechnodysisApp extends StatelessWidget {
         title:                     'Technodysis — Issue Tracker',
         theme:                     AppTheme.theme,
         debugShowCheckedModeBanner: false,
-        // AppRouter handles all auth state & screen selection
         home: const AppRouter(),
         onGenerateRoute: (settings) {
           final page = AppRouter(routeName: settings.name);
@@ -79,7 +80,7 @@ class AppRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final authVm = context.watch<AuthViewModel>();
 
-    // ── Loading ───────────────────────────────────────────
+    // ── Loading ──────────────────────────────────────────────────────────
     if (authVm.state == AuthState.initial ||
         authVm.state == AuthState.loading) {
       return const Scaffold(
@@ -90,19 +91,19 @@ class AppRouter extends StatelessWidget {
       );
     }
 
-    // ── Not logged in ─────────────────────────────────────
+    // ── Not logged in ────────────────────────────────────────────────────
     if (authVm.state == AuthState.unauthenticated ||
         authVm.state == AuthState.error ||
         !authVm.isAuthenticated) {
       return const LoginScreen();
     }
 
-    // ── Logged in but awaiting admin approval ─────────────
+    // ── Logged in but awaiting admin approval ────────────────────────────
     if (authVm.state == AuthState.pendingApproval) {
       return const PendingApprovalScreen();
     }
 
-    // ── Authenticated — restore correct page ──────────────
+    // ── Authenticated — route by role or named route ─────────────────────
     switch (routeName) {
       case '/issues':
         return const IssueListScreen();
@@ -112,15 +113,35 @@ class AppRouter extends StatelessWidget {
         return const HistoryScreen();
       case '/admin':
         if (authVm.isAdmin) return const AdminScreen();
-        return const DashboardScreen();
+        return _roleDashboard(authVm);
       case '/projects':
-        return const CreateProjectScreen();
-     case '/settings':
-       if (authVm.isAdmin) return const SettingsScreen();
-       return const DashboardScreen();
+        return const ProjectsScreen();
+      case '/settings':
+        if (authVm.isAdmin) return const SettingsScreen();
+        return _roleDashboard(authVm);
+      // Role-specific dashboard routes
+      case '/super-dashboard':
+        if (authVm.currentUser?.isSuperAdmin == true) {
+          return const SuperAdminDashboard();
+        }
+        return _roleDashboard(authVm);
+      case '/admin-dashboard':
+        if (authVm.isAdmin) return const AdminDashboard();
+        return _roleDashboard(authVm);
+      case '/user-dashboard':
+        return const UserDashboard();
       case '/dashboard':
       default:
-        return const DashboardScreen();
+        return _roleDashboard(authVm);
     }
+  }
+
+  /// Returns the correct home dashboard for the current user's role.
+  Widget _roleDashboard(AuthViewModel authVm) {
+    final user = authVm.currentUser;
+    if (user == null) return const LoginScreen();
+    if (user.isSuperAdmin) return const SuperAdminDashboard();
+    if (user.isAdmin || user.isManager) return const AdminDashboard();
+    return const UserDashboard();
   }
 }
