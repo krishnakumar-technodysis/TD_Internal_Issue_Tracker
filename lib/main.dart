@@ -54,7 +54,7 @@ class TechnodysisApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SettingsViewModel(SettingsRepositoryImpl())),
       ],
       child: MaterialApp(
-        title:                     'Technodysis — Issue Tracker',
+        title:                     'TD Internal Tracker',
         theme:                     AppTheme.theme,
         debugShowCheckedModeBanner: false,
         home: const AppRouter(),

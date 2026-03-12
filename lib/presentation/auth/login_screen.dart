@@ -132,11 +132,11 @@ class _BrandPanel extends StatelessWidget {
             ),
             const SizedBox(width: 15),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('TECHNODYSIS',
+              Text('TD INTERNAL',
                   style: GoogleFonts.cabin(
                       fontWeight: FontWeight.w800, fontSize: 18,
                       color: Colors.white70)),
-              const Text('Issue Tracker',
+              const Text('TRACKER',
                   style: TextStyle(fontSize: 11, color: Colors.white70, letterSpacing: 1)),
             ]),
           ]),
@@ -221,7 +221,7 @@ class _FormPanel extends StatelessWidget {
                 style: GoogleFonts.cabin(fontSize: 22, fontWeight: FontWeight.w700,
                     color: AppTheme.textColor)),
             const SizedBox(height: 4),
-            const Text('Sign in to your Technodysis account',
+            const Text('Sign in to your TD Internal Tracker account',
                 style: TextStyle(fontSize: 13, color: AppTheme.textMuted)),
             const SizedBox(height: 30),
 

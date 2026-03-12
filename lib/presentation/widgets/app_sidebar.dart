@@ -60,11 +60,11 @@ class AppSidebar extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TECHNODYSIS',
+                  Text('TD INTERNAL',
                       style: GoogleFonts.cabin(
                           fontWeight: FontWeight.w800, fontSize: 12.5,
                           color: AppTheme.textColor)),
-                  const Text('ISSUE TRACKER',
+                  const Text('TRACKER',
                       style: TextStyle(fontSize: 8.5, color: AppTheme.textDim,
                           letterSpacing: 1.2)),
                 ],

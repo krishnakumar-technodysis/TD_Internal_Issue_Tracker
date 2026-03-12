@@ -340,7 +340,7 @@ class _BrandPanel extends StatelessWidget {
               fit: BoxFit.contain,
             ),
             const SizedBox(width: 12),
-            Text('TECHNODYSIS',
+            Text('TD INTERNAL TRACKER',
                 style: GoogleFonts.cabin(
                     fontWeight: FontWeight.w800, fontSize: 18,
                     color: Colors.white70)),

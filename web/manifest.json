@@ -1,11 +1,11 @@
 {
-    "name": "td_issue_tracking_portal",
-    "short_name": "td_issue_tracking_portal",
+    "name": "TD Internal Tracker",
+    "short_name": "TD Tracker",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Technodysis Internal Issue Tracking Portal",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
