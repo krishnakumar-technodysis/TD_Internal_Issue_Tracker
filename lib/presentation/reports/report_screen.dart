@@ -2,7 +2,7 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
-import 'package:excel/excel.dart';
+import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -83,7 +83,7 @@ class ReportScreen extends StatelessWidget {
                       'All issues with status, priority, customer, '
                       'assigned engineer, root cause, and dates.',
                   filename: 'issues_report',
-                  onDownload: () => _downloadIssues(issueVm.allIssues),
+                  onDownload: () async => _downloadIssues(issueVm.allIssues),
                 ),
                 _ReportCard(
                   icon: Icons.folder_open_rounded,
