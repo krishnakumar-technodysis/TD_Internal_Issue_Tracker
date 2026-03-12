@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:issue_tracker/presentation/setting/settings_view_model.dart' as issue_tracker;
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -268,8 +269,8 @@ class _CreateUserTabState extends State<_CreateUserTab> {
   final _nameCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl  = TextEditingController();
-  final _deptCtrl       = TextEditingController();
-  String  _role    = AppConstants.roleUser;
+  String  _role       = AppConstants.roleUser;
+  String  _department = '';
   bool    _loading = false;
   bool    _obscure = true;
   String? _error;
@@ -277,8 +278,7 @@ class _CreateUserTabState extends State<_CreateUserTab> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose(); _emailCtrl.dispose();
-    _passCtrl.dispose(); _deptCtrl.dispose();
+    _nameCtrl.dispose(); _emailCtrl.dispose(); _passCtrl.dispose();
     super.dispose();
   }
 
@@ -291,19 +291,16 @@ class _CreateUserTabState extends State<_CreateUserTab> {
         password:    _passCtrl.text,
         displayName: _nameCtrl.text.trim(),
         role:        _role,
-        department:  _deptCtrl.text.trim(),
+        department:  _department,
       );
       final name = _nameCtrl.text.trim();
-      _nameCtrl.clear(); _emailCtrl.clear();
-      _passCtrl.clear(); _deptCtrl.clear();
+      _nameCtrl.clear(); _emailCtrl.clear(); _passCtrl.clear();
       setState(() {
         _success = 'User "$name" created successfully.';
         _role = AppConstants.roleUser;
+        _department = '';
       });
-      // Switch to All Users tab
-      if (mounted) {
-        DefaultTabController.of(context).animateTo(0);
-      }
+      if (mounted) DefaultTabController.of(context).animateTo(0);
     } catch (e) {
       setState(() => _error = _parseErr(e.toString()));
     } finally {
@@ -329,10 +326,8 @@ class _CreateUserTabState extends State<_CreateUserTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               const SizedBox(height: 8),
 
-              // ── Feedback messages ───────────────────
               if (_success != null) ...[
                 _Banner(msg: _success!, color: AppTheme.green, bg: AppTheme.greenBg,
                     icon: Icons.check_circle_outline_rounded),
@@ -344,13 +339,11 @@ class _CreateUserTabState extends State<_CreateUserTab> {
                 const SizedBox(height: 16),
               ],
 
-              // ── Fields ──────────────────────────────
               TField(
                 label: 'Full Name', controller: _nameCtrl,
                 isRequired: true, maxLength: 60,
                 hint: 'e.g. Tendai Moyo',
-                validator: (v) => v == null || v.trim().isEmpty
-                    ? 'Name is required' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
               ),
               const SizedBox(height: 14),
               TField(
@@ -371,33 +364,28 @@ class _CreateUserTabState extends State<_CreateUserTab> {
                 hint: 'Min 6 characters',
                 suffixIcon: IconButton(
                   icon: Icon(
-                      _obscure
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                      _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                       size: 18, color: AppTheme.textDim),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
-                validator: (v) => v == null || v.length < 6
-                    ? 'Minimum 6 characters' : null,
-              ),
-              const SizedBox(height: 14),
-              TField(
-                label: 'Department', controller: _deptCtrl,
-                hint: 'e.g. Automation Engineer',
-                maxLength: 60,
-              ),
-              const SizedBox(height: 14),
-              TDropdown(
-                label: 'Role', value: _role,
-                items: [AppConstants.roleUser, AppConstants.roleAdmin],
-                isRequired: true,
-                onChanged: (v) => setState(() => _role = v!),
+                validator: (v) => v == null || v.length < 6 ? 'Minimum 6 characters' : null,
               ),
               const SizedBox(height: 14),
 
+              // Department — pulled from Firestore settings
+              _DepartmentDropdown(
+                value: _department.isEmpty ? null : _department,
+                onChanged: (v) => setState(() => _department = v ?? ''),
+              ),
+              const SizedBox(height: 14),
+
+              // Role with description chips
+              _RolePicker(
+                value: _role,
+                onChanged: (v) => setState(() => _role = v),
+              ),
               const SizedBox(height: 28),
 
-              // ── Submit ──────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: AppButton(
@@ -688,3 +676,113 @@ Widget _emptyState(String msg) => Center(
     ]),
   ),
 );
+
+// ── Department dropdown (reads from Firestore) ────────────
+class _DepartmentDropdown extends StatelessWidget {
+  final String? value;
+  final void Function(String?) onChanged;
+  const _DepartmentDropdown({this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    // Import inline to avoid circular import
+    final vm = context.read<issue_tracker.SettingsViewModel>();
+    return StreamBuilder<List<dynamic>>(
+      stream: vm.departmentsStream,
+      builder: (context, snap) {
+        final depts = (snap.data ?? [])
+            .where((d) => d.isActive)
+            .map((d) => d.name as String)
+            .toList();
+
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('DEPARTMENT',
+              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
+                  color: AppTheme.textMuted, letterSpacing: 0.7)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            value: (value != null && depts.contains(value)) ? value : null,
+            hint: const Text('Select department',
+                style: TextStyle(color: AppTheme.textDim, fontSize: 13)),
+            decoration: InputDecoration(
+                filled: true, fillColor: AppTheme.cardAlt,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.borderLight)),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.borderLight)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.accent, width: 1.5))),
+            dropdownColor: AppTheme.card,
+            items: depts.map((d) => DropdownMenuItem(
+              value: d,
+              child: Text(d, style: const TextStyle(
+                  fontSize: 13, color: AppTheme.textColor)),
+            )).toList(),
+            onChanged: onChanged,
+          ),
+        ]);
+      },
+    );
+  }
+}
+
+// ── Role picker with description ──────────────────────────
+class _RolePicker extends StatelessWidget {
+  final String value;
+  final void Function(String) onChanged;
+  const _RolePicker({required this.value, required this.onChanged});
+
+  static const _roles = [
+    (id: 'user',    label: 'User',    icon: '👤', desc: 'Can create & view issues, view assigned projects'),
+    (id: 'manager', label: 'Manager', icon: '👔', desc: 'All user access + create projects, manage team'),
+    (id: 'admin',   label: 'Admin',   icon: '🛡️',  desc: 'Full access — users, settings, approvals'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('ROLE *',
+          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
+              color: AppTheme.textMuted, letterSpacing: 0.7)),
+      const SizedBox(height: 8),
+      Column(children: _roles.map((r) {
+        final selected = value == r.id;
+        return GestureDetector(
+          onTap: () => onChanged(r.id),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+                color: selected ? AppTheme.accent.withOpacity(0.1) : AppTheme.cardAlt,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: selected ? AppTheme.accent : AppTheme.border,
+                    width: selected ? 1.5 : 1)),
+            child: Row(children: [
+              Text(r.icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(r.label,
+                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600,
+                          color: selected ? AppTheme.accent : AppTheme.textColor)),
+                  Text(r.desc,
+                      style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted)),
+                ],
+              )),
+              if (selected)
+                const Icon(Icons.check_circle_rounded,
+                    color: AppTheme.accent, size: 18),
+            ]),
+          ),
+        );
+      }).toList()),
+    ]);
+  }
+}

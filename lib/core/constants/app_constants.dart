@@ -1,12 +1,18 @@
 // lib/core/constants/app_constants.dart
 class AppConstants {
-  // Super admin — hidden from all user management screens
   static const String superAdminEmail = 'admin@technodysis.com';
 
   static const String issuesCollection = 'issues';
   static const String usersCollection  = 'users';
-  static const String roleAdmin = 'admin';
-  static const String roleUser  = 'user';
+
+  // Roles
+  static const String roleSuperAdmin = 'super_admin';
+  static const String roleAdmin      = 'admin';
+  static const String roleManager    = 'manager';
+  static const String roleUser       = 'user';
+
+  // All selectable roles (excluding super_admin — it's set directly on DB)
+  static const List<String> roles = [roleUser, roleManager, roleAdmin];
 
   static const List<String> customers = [
     'Ecocash','Econet','CWS','EMM','EthioTelecom',
@@ -24,4 +30,28 @@ class AppConstants {
   ];
   static const List<String> openStatuses   = ['New','In Progress','Waiting for Client'];
   static const List<String> closedStatuses = ['Resolved','Closed'];
+
+  // Task statuses with display labels
+  static const List<String> taskStatuses = [
+    'todo','in_progress','review','done','cancelled'
+  ];
+  static String taskStatusLabel(String s) => switch (s) {
+    'todo'        => 'To Do',
+    'in_progress' => 'In Progress',
+    'review'      => 'Review',
+    'done'        => 'Done',
+    'cancelled'   => 'Cancelled',
+    _             => s,
+  };
+
+  // Project statuses
+  static const List<String> projectStatuses = [
+    'active','on_hold','completed','cancelled'
+  ];
+  static String projectStatusLabel(String s) => switch (s) {
+    'active'    => 'Active',
+    'on_hold'   => 'On Hold',
+    'completed' => 'Completed',
+    _           => 'Cancelled',
+  };
 }

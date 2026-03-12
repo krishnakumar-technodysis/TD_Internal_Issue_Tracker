@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../setting/settings_view_model.dart';
 import '../../core/theme/app_theme.dart';
 import '../../domain/entities/issue_entity.dart';
 import '../auth/auth_viewmodel.dart';
@@ -27,8 +28,8 @@ class _CreateIssueScreenState extends State<CreateIssueScreen> {
   final _summaryCtrl  = TextEditingController();
   final _actionCtrl   = TextEditingController();
 
-  String    _customer   = AppConstants.customers.first;
-  String    _tech       = AppConstants.technologies.first;
+  String    _customer   = '';
+  String    _tech       = '';
   String    _priority   = 'Medium';
   String    _status     = 'New';
   String    _rootCause  = 'Unknown';
@@ -254,26 +255,50 @@ class _CreateIssueScreenState extends State<CreateIssueScreen> {
           const SizedBox(height: 14),
 
           // Client + Technology
-          FormRow(
-            breakpoint: compact ? 9999 : 440,
-            children: [
-              TDropdown(
-                label: 'Client',
-                value: _customer,
-                items: AppConstants.customers,
-                isRequired: true,
-                onChanged: (v) => setState(() => _customer = v!),
-                validator: (v) =>
-                v == null || v.isEmpty ? 'Client is required' : null,
-              ),
-              TDropdown(
-                label: 'Technology',
-                value: _tech,
-                items: AppConstants.technologies,
-                isRequired: true,
-                onChanged: (v) => setState(() => _tech = v!),
-              ),
-            ],
+          StreamBuilder(
+            stream: context.read<SettingsViewModel>().clientsStream,
+            builder: (_, clientSnap) {
+              final clients = (clientSnap.data ?? [])
+                  .where((c) => c.isActive).map((c) => c.name).toList();
+              if (clients.isNotEmpty && _customer.isEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => setState(() => _customer = clients.first));
+              }
+              return StreamBuilder(
+                stream: context.read<SettingsViewModel>().technologiesStream,
+                builder: (_, techSnap) {
+                  final techs = (techSnap.data ?? [])
+                      .where((t) => t.isActive).map((t) => t.name).toList();
+                  if (techs.isNotEmpty && _tech.isEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => setState(() => _tech = techs.first));
+                  }
+                  return FormRow(
+                    breakpoint: compact ? 9999 : 440,
+                    children: [
+                      TDropdown(
+                        label: 'Client',
+                        value: _customer.isEmpty ? null : _customer,
+                        hint: 'Select client',
+                        items: clients.isEmpty ? AppConstants.customers : clients,
+                        isRequired: true,
+                        onChanged: (v) => setState(() => _customer = v ?? ''),
+                        validator: (v) =>
+                        v == null || v.isEmpty ? 'Client is required' : null,
+                      ),
+                      TDropdown(
+                        label: 'Technology',
+                        value: _tech.isEmpty ? null : _tech,
+                        hint: 'Select technology',
+                        items: techs.isEmpty ? AppConstants.technologies : techs,
+                        isRequired: true,
+                        onChanged: (v) => setState(() => _tech = v ?? ''),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
           const SizedBox(height: 14),
 
@@ -376,14 +401,21 @@ class _CreateIssueScreenState extends State<CreateIssueScreen> {
               TDatePicker(
                 label: 'Start Date',
                 value: _startDate,
-                onChanged: (d) => setState(() => _startDate = d),
+                onChanged: (d) => setState(() {
+                  _startDate = d;
+                  // Reset closing date if it's now before new start date
+                  if (_closingDate != null && d != null &&
+                      _closingDate!.isBefore(d)) {
+                    _closingDate = null;
+                  }
+                }),
               ),
               TDatePicker(
                 label: 'Target Closing Date',
                 value: _closingDate,
-                onChanged: (d) => setState(() {
-                  _closingDate = d;
-                }),
+                // Closing date must be >= start date (or today if no start)
+                firstDate: _startDate,
+                onChanged: (d) => setState(() => _closingDate = d),
               ),
             ],
           ),

@@ -6,7 +6,7 @@ import '../../core/theme/app_theme.dart';
 class StatCard extends StatelessWidget {
   final String title;
   final String value;
-  final String trend;
+  final String? trend;
   final bool trendUp;
   final Color accentColor;
   final Color accentColorEnd;
@@ -17,8 +17,8 @@ class StatCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
-    required this.trend,
-    required this.trendUp,
+    this.trend,
+    this.trendUp = false,
     required this.accentColor,
     required this.accentColorEnd,
     required this.emoji,
@@ -95,7 +95,7 @@ class StatCard extends StatelessWidget {
                       const SizedBox(width: 3),
                       Flexible(
                         child: Text(
-                          trend,
+                          trend ?? '',
                           style: TextStyle(
                               fontSize: 11,
                               color: trendUp

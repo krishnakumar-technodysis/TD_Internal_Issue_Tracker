@@ -34,7 +34,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
@@ -45,12 +45,19 @@ class _Badge extends StatelessWidget {
         children: [
           if (dot) ...[
             Container(width: 6, height: 6,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 5),
           ],
-          Text(label,
-            style: GoogleFonts.cabin(
-              fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+          // Flexible prevents overflow when badge is inside a constrained Row
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: GoogleFonts.cabin(
+                  fontSize: 11, fontWeight: FontWeight.w600, color: color),
+            ),
+          ),
         ],
       ),
     );
@@ -70,6 +77,6 @@ class TagChip extends StatelessWidget {
       border: Border.all(color: AppTheme.border),
     ),
     child: Text(label,
-      style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
+        style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
   );
 }

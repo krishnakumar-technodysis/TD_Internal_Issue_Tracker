@@ -9,10 +9,14 @@ class AuthViewModel extends ChangeNotifier {
   final AuthRepository _authRepo;
   AuthViewModel(this._authRepo) { _init(); }
 
-  AuthState   _state        = AuthState.initial;
-  UserEntity? _currentUser;
-  String?     _errorMessage;
-  bool        _registeredJustNow = false;
+  AuthState        _state             = AuthState.initial;
+  UserEntity?      _currentUser;
+  String?          _errorMessage;
+  bool             _registeredJustNow = false;
+  List<UserEntity> _allUsers          = [];
+
+  /// Sync list of all users, kept up-to-date via allUsersStream.
+  List<UserEntity> get allUsers => _allUsers;
 
   AuthState   get state          => _state;
   UserEntity? get currentUser    => _currentUser;
@@ -22,6 +26,11 @@ class AuthViewModel extends ChangeNotifier {
   bool        get registeredJustNow => _registeredJustNow;
 
   void _init() {
+    // Keep allUsers in sync
+    _authRepo.allUsersStream.listen((users) {
+      _allUsers = users;
+      notifyListeners();
+    });
     _authRepo.authStateChanges.listen((user) {
       if (user == null) {
         _currentUser = null;

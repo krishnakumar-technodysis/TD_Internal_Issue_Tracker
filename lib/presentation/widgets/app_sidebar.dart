@@ -1,251 +1,227 @@
 // lib/presentation/widgets/app_sidebar.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:issue_tracker/presentation/issues/issue_viewmodel.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../auth/auth_viewmodel.dart';
+import '../issues/issue_viewmodel.dart';
 import 'app_image.dart';
 
-enum SidebarPage { dashboard, issues, create, history, approvals, admin }
+enum SidebarPage {
+  dashboard, issues, create, history, projects, admin, settings
+}
 
 class AppSidebar extends StatelessWidget {
   final SidebarPage activePage;
-  /// True when rendered inside a Drawer — shows a close button & safe area
   final bool inDrawer;
 
-  const AppSidebar({
-    super.key,
-    required this.activePage,
-    this.inDrawer = false,
-  });
+  const AppSidebar({super.key, required this.activePage, this.inDrawer = false});
 
   @override
   Widget build(BuildContext context) {
     final authVm  = context.watch<AuthViewModel>();
     final issueVm = context.watch<IssueViewModel>();
     final user    = authVm.currentUser;
+    final isAdmin   = user?.isAdmin   ?? false;
+    final isManager = user?.isManager ?? false;
+    final canViewDash = user?.canViewDashboard ?? false;
 
     return Container(
       width: inDrawer ? double.infinity : 230,
       decoration: BoxDecoration(
         color: AppTheme.inkSoft,
-        border: inDrawer
-            ? null
-            : const Border(
-            right: BorderSide(color: AppTheme.border)),
+        border: inDrawer ? null
+            : const Border(right: BorderSide(color: AppTheme.border)),
       ),
       child: SafeArea(
         right: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-            // ── Logo row (+ close btn when in drawer) ─────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 12, 4),
-              child: Row(children: [
-                const AppImage.asset(
-                  'assets/images/td_logo.png',
+          // ── Logo ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 4),
+            child: Row(children: [
+              const AppImage.asset('assets/images/td_logo.png',
                   width: 36, height: 36,
-                  shape: AppImageShape.rectangle,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('TECHNODYSIS',
-                        style: GoogleFonts.cabin(
-                            fontWeight: FontWeight.w800, fontSize: 12.5,
-                            color: AppTheme.textColor)),
-                    const Text('ISSUE TRACKER',
-                        style: TextStyle(
-                            fontSize: 8.5, color: AppTheme.textDim,
-                            letterSpacing: 1.2)),
-                  ],
-                )),
-                if (inDrawer)
-                  GestureDetector(
+                  shape: AppImageShape.rectangle, fit: BoxFit.contain),
+              const SizedBox(width: 10),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('TECHNODYSIS',
+                      style: GoogleFonts.cabin(
+                          fontWeight: FontWeight.w800, fontSize: 12.5,
+                          color: AppTheme.textColor)),
+                  const Text('ISSUE TRACKER',
+                      style: TextStyle(fontSize: 8.5, color: AppTheme.textDim,
+                          letterSpacing: 1.2)),
+                ],
+              )),
+              if (inDrawer)
+                GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.border.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          size: 16, color: AppTheme.textDim),
-                    ),
-                  ),
-              ]),
-            ),
-            const SizedBox(height: 18),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                            color: AppTheme.border.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(6)),
+                        child: const Icon(Icons.close_rounded,
+                            size: 16, color: AppTheme.textDim))),
+            ]),
+          ),
+          const SizedBox(height: 8),
 
-            // ── Main nav ──────────────────────────────────
-            _sectionLabel('MAIN'),
-            _NavItem(
-                icon: '📊', label: 'Dashboard',
-                active: activePage == SidebarPage.dashboard,
-                onTap:  () => _nav(context, SidebarPage.dashboard)),
-            _NavItem(
-                icon: '🐛', label: 'All Issues',
-                badge: issueVm.allIssues.length.toString(),
-                active: activePage == SidebarPage.issues,
-                onTap:  () => _nav(context, SidebarPage.issues)),
-            _NavItem(
-                icon: '➕', label: 'Create Issue',
-                active: activePage == SidebarPage.create,
-                onTap:  () => _nav(context, SidebarPage.create)),
-            _NavItem(
-                icon: '📋', label: 'History',
-                active: activePage == SidebarPage.history,
-                onTap:  () => _nav(context, SidebarPage.history)),
-            if (authVm.isAdmin)
-              // _NavItem(
-              //     icon: '👤', label: 'Approvals',
-              //     badgeColor: AppTheme.orange,
-              //     badge: null,
-              //     active: activePage == SidebarPage.approvals,
-              //     onTap: () => _nav(context, SidebarPage.approvals)),
-            if (authVm.isAdmin)
-              _NavItem(
-                  icon: '⚙️', label: 'Admin Panel',
-                  active: activePage == SidebarPage.admin,
-                  onTap: () => _nav(context, SidebarPage.admin)),
+          // ── Scrollable nav ────────────────────────────
+          Expanded(child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
+              // MAIN section
+              _sectionLabel('MAIN'),
 
-            const SizedBox(height: 8),
+              if (canViewDash)
+                _NavItem(icon: '📊', label: 'Dashboard',
+                    active: activePage == SidebarPage.dashboard,
+                    onTap: () => _nav(context, SidebarPage.dashboard)),
 
-            // ── Status filters ────────────────────────────
-            _sectionLabel('BY STATUS'),
-            _NavItem(
-                icon: '🔵', label: 'Open',
-                badgeColor: AppTheme.orange,
-                badge: issueVm.openIssues.toString(),
-                onTap: () => _nav(context, SidebarPage.issues)),
-            _NavItem(
-                icon: '🟣', label: 'In Progress',
-                badgeColor: AppTheme.purple,
-                badge: issueVm.inProgressIssues.toString(),
-                onTap: () => _nav(context, SidebarPage.issues)),
-            _NavItem(
-                icon: '✅', label: 'Resolved',
-                badgeColor: AppTheme.green,
-                badge: issueVm.resolvedIssues.toString(),
-                onTap: () => _nav(context, SidebarPage.issues)),
-            _NavItem(
-                icon: '🔴', label: 'Critical',
-                badgeColor: AppTheme.red,
-                badge: issueVm.criticalIssues.toString(),
-                onTap: () => _nav(context, SidebarPage.issues)),
+              _NavItem(icon: '🐛', label: 'All Issues',
+                  badge: issueVm.allIssues.length.toString(),
+                  active: activePage == SidebarPage.issues,
+                  onTap: () => _nav(context, SidebarPage.issues)),
 
-            const Spacer(),
+              _NavItem(icon: '➕', label: 'Create Issue',
+                  active: activePage == SidebarPage.create,
+                  onTap: () => _nav(context, SidebarPage.create)),
 
-            // ── User card ─────────────────────────────────
-            Container(
-              margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
+              _NavItem(icon: '📋', label: 'History',
+                  active: activePage == SidebarPage.history,
+                  onTap: () => _nav(context, SidebarPage.history)),
+
+              _NavItem(icon: '📁', label: 'Projects',
+                  active: activePage == SidebarPage.projects,
+                  onTap: () => _nav(context, SidebarPage.projects)),
+
+              // Admin/Manager only
+              if (isAdmin || isManager) ...[
+                const SizedBox(height: 8),
+                _sectionLabel('MANAGEMENT'),
+              ],
+
+              if (isAdmin)
+                _NavItem(icon: '⚙️', label: 'Admin Panel',
+                    active: activePage == SidebarPage.admin,
+                    onTap: () => _nav(context, SidebarPage.admin)),
+
+              if (isAdmin)
+                _NavItem(icon: '🔧', label: 'Settings',
+                    active: activePage == SidebarPage.settings,
+                    onTap: () => _nav(context, SidebarPage.settings)),
+
+              // Status filters
+              const SizedBox(height: 8),
+              _sectionLabel('BY STATUS'),
+              _NavItem(icon: '🔵', label: 'Open',
+                  badge: issueVm.openIssues.toString(),
+                  badgeColor: AppTheme.orange,
+                  onTap: () => _nav(context, SidebarPage.issues)),
+              _NavItem(icon: '🟣', label: 'In Progress',
+                  badge: issueVm.inProgressIssues.toString(),
+                  badgeColor: AppTheme.purple,
+                  onTap: () => _nav(context, SidebarPage.issues)),
+              _NavItem(icon: '✅', label: 'Resolved',
+                  badge: issueVm.resolvedIssues.toString(),
+                  badgeColor: AppTheme.green,
+                  onTap: () => _nav(context, SidebarPage.issues)),
+              _NavItem(icon: '🔴', label: 'Critical',
+                  badge: issueVm.criticalIssues.toString(),
+                  badgeColor: AppTheme.red,
+                  onTap: () => _nav(context, SidebarPage.issues)),
+
+              const SizedBox(height: 16),
+            ]),
+          )),
+
+          // ── User card ─────────────────────────────────
+          Container(
+            margin: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
                 color: AppTheme.border.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: Row(children: [
-                _Avatar(name: user?.displayName ?? 'U'),
-                const SizedBox(width: 8),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user?.displayName ?? 'User',
-                      style: const TextStyle(
-                          fontSize: 12.5, fontWeight: FontWeight.w500,
-                          color: AppTheme.textColor),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    Text(
-                        (user?.role ?? 'user').toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 9.5, color: AppTheme.textDim,
-                            letterSpacing: 0.8)),
-                  ],
-                )),
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded,
-                      size: 16, color: AppTheme.textDim),
-                  tooltip: 'Sign out',
-                  onPressed: () => authVm.signOut(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ]),
-            ),
-          ],
-        ),
+                border: Border.all(color: AppTheme.border.withOpacity(0.5))),
+            child: Row(children: [
+              Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: AppTheme.accentBg,
+                      border: Border.all(color: AppTheme.accent.withOpacity(0.3))),
+                  child: Center(child: Text(
+                      user?.displayName.isNotEmpty == true
+                          ? user!.displayName[0].toUpperCase() : 'U',
+                      style: const TextStyle(fontSize: 13,
+                          fontWeight: FontWeight.w700, color: AppTheme.accent)))),
+              const SizedBox(width: 8),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user?.displayName ?? 'User',
+                      style: const TextStyle(fontSize: 12.5,
+                          fontWeight: FontWeight.w600, color: AppTheme.textColor),
+                      overflow: TextOverflow.ellipsis),
+                  Text(user?.roleLabel ?? '',
+                      style: const TextStyle(fontSize: 10.5, color: AppTheme.textDim)),
+                ],
+              )),
+              GestureDetector(
+                  onTap: () => authVm.signOut(),
+                  child: const Icon(Icons.logout_rounded,
+                      size: 16, color: AppTheme.textDim)),
+            ]),
+          ),
+        ]),
       ),
     );
   }
 
-  Widget _sectionLabel(String txt) => Padding(
-    padding: const EdgeInsets.fromLTRB(18, 6, 0, 4),
-    child: Text(txt,
-        style: const TextStyle(
-            fontSize: 9.5, fontWeight: FontWeight.w600,
-            color: AppTheme.textDim, letterSpacing: 1.4)),
+  static Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 10, 0, 4),
+    child: Text(text,
+        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700,
+            color: AppTheme.textDim, letterSpacing: 1.2)),
   );
 
   void _nav(BuildContext context, SidebarPage page) {
-    // Close drawer first if we're inside one
     if (inDrawer) Navigator.pop(context);
-    if (page == activePage && !inDrawer) return;
     switch (page) {
       case SidebarPage.dashboard:
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/dashboard', (_) => false);
-        break;
+        Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (_) => false);
       case SidebarPage.issues:
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/issues', (_) => false);
-        break;
+        Navigator.pushNamedAndRemoveUntil(context, '/issues',    (_) => false);
       case SidebarPage.create:
-        Navigator.pushNamed(context, '/create');
-        break;
+        Navigator.pushNamedAndRemoveUntil(context, '/create',    (_) => false);
       case SidebarPage.history:
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/history', (_) => false);
-        break;
-      case SidebarPage.approvals:
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/approvals', (_) => false);
-        break;
+        Navigator.pushNamedAndRemoveUntil(context, '/history',   (_) => false);
+      case SidebarPage.projects:
+        Navigator.pushNamedAndRemoveUntil(context, '/projects',  (_) => false);
       case SidebarPage.admin:
-        Navigator.pushNamedAndRemoveUntil(
-            context, '/admin', (_) => false);
-        break;
+        Navigator.pushNamedAndRemoveUntil(context, '/admin',     (_) => false);
+      case SidebarPage.settings:
+        Navigator.pushNamedAndRemoveUntil(context, '/settings',  (_) => false);
     }
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// Nav item
-// ─────────────────────────────────────────────────────────
+// ── Nav item ──────────────────────────────────────────────
 class _NavItem extends StatelessWidget {
-  final String icon;
-  final String label;
+  final String icon, label;
   final bool active;
   final String? badge;
   final Color? badgeColor;
   final VoidCallback? onTap;
 
   const _NavItem({
-    required this.icon,
-    required this.label,
-    this.active    = false,
-    this.badge,
-    this.badgeColor,
-    this.onTap,
+    required this.icon, required this.label,
+    this.active = false, this.badge, this.badgeColor, this.onTap,
   });
 
   @override
@@ -256,15 +232,10 @@ class _NavItem extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: active
-              ? AppTheme.accent.withOpacity(0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-              color: active
-                  ? AppTheme.accent.withOpacity(0.25)
-                  : Colors.transparent),
-        ),
+            color: active ? AppTheme.accent.withOpacity(0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: active ? Border.all(color: AppTheme.accent.withOpacity(0.2))
+                : null),
         child: Row(children: [
           Text(icon, style: const TextStyle(fontSize: 14)),
           const SizedBox(width: 9),
@@ -272,56 +243,19 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  color: active ? AppTheme.accent : AppTheme.textMuted),
-              overflow: TextOverflow.ellipsis)),
+                  color: active ? AppTheme.accent : AppTheme.textMuted))),
           if (badge != null && badge != '0')
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor ?? AppTheme.accent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                  badge!,
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: badgeColor != null
-                          ? Colors.white
-                          : AppTheme.ink)),
-            ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                    color: (badgeColor ?? AppTheme.textDim).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10)),
+                child: Text(badge!,
+                    style: TextStyle(
+                        fontSize: 10.5, fontWeight: FontWeight.w700,
+                        color: badgeColor ?? AppTheme.textDim))),
         ]),
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// Avatar
-// ─────────────────────────────────────────────────────────
-class _Avatar extends StatelessWidget {
-  final String name;
-  const _Avatar({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    final initials = name.length >= 2
-        ? name.substring(0, 2).toUpperCase()
-        : name.toUpperCase();
-    return Container(
-      width: 32, height: 32,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(7),
-        gradient: const LinearGradient(
-            colors: [AppTheme.accent, AppTheme.blue],
-            begin: Alignment.topLeft,
-            end:   Alignment.bottomRight),
-      ),
-      child: Center(child: Text(initials,
-          style: GoogleFonts.dmSans(
-              fontSize: 12, fontWeight: FontWeight.w700,
-              color: AppTheme.ink))),
     );
   }
 }

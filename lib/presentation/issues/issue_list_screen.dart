@@ -1,7 +1,6 @@
 // lib/presentation/issues/issue_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:issue_tracker/presentation/widgets/issue_data_grid.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -42,7 +41,7 @@ class _IssueListScreenState extends State<IssueListScreen> {
           child: Row(children: [
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('All Issues',
-                  style: GoogleFonts.cabin(
+                  style: GoogleFonts.syne(
                       fontSize: 22, fontWeight: FontWeight.w700,
                       color: AppTheme.textColor, letterSpacing: -0.5)),
               const SizedBox(height: 5),
@@ -74,32 +73,49 @@ class _IssueListScreenState extends State<IssueListScreen> {
                   bottom: BorderSide(color: AppTheme.border))),
           child: LayoutBuilder(builder: (_, box) {
             final isWide = box.maxWidth > 700;
-            final widgets = _buildFilters(vm);
-            return isWide
-                ? Row(children: widgets)
-                : Wrap(spacing: 8, runSpacing: 8, children: widgets);
+            if (isWide) return Row(children: _buildFilters(vm));
+            // Narrow: search full width, chips in Wrap (no Expanded in Wrap)
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SearchBox(controller: _searchCtrl, onChanged: vm.setSearch),
+                const SizedBox(height: 8),
+                Wrap(spacing: 8, runSpacing: 8,
+                    children: _buildNarrowFilters(vm)),
+              ],
+            );
           }),
         ),
 
+        // ── Column headers ────────────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 9, 20, 9),
+          decoration: BoxDecoration(
+              color: AppTheme.ink.withOpacity(0.6),
+              border: const Border(
+                  bottom: BorderSide(color: AppTheme.border))),
+          child: _ColumnHeader(),
+        ),
+
+        // ── List ──────────────────────────────────────────────────────
         Expanded(
           child: vm.issues.isEmpty
               ? const _EmptyState()
-              : Expanded(
-            child: IssueDataGrid(
-              issues: vm.issues,
-              onTap: (issue) => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => IssueDetailScreen(issue: issue),
-                ),
+              : ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: ListView.builder(
+              primary: false,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: vm.issues.length,
+              itemBuilder: (ctx, i) => _IssueRow(
+                issue: vm.issues[i],
+                isEven: i % 2 == 0,
+                onTap: () => Navigator.push(ctx,
+                    MaterialPageRoute(builder: (_) =>
+                        IssueDetailScreen(issue: vm.issues[i]))),
+                onEdit: () => Navigator.pushNamed(ctx, '/edit',
+                    arguments: vm.issues[i]),
               ),
-              onEdit: (issue) =>
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => IssueDetailScreen(issue: issue),
-                    ),
-                  ),
             ),
           ),
         ),
@@ -162,6 +178,39 @@ class _IssueListScreenState extends State<IssueListScreen> {
         ),
       ),
     ],
+  ];
+
+  // Same as _buildFilters but without Expanded (safe to use in Wrap)
+  List<Widget> _buildNarrowFilters(IssueViewModel vm) => [
+    _FilterChip(
+      label: 'Status', value: vm.filterStatus,
+      items: const ['', ...AppConstants.statuses],
+      onChanged: vm.setFilterStatus,
+    ),
+    _FilterChip(
+      label: 'Client', value: vm.filterCustomer,
+      items: ['', ...AppConstants.customers],
+      onChanged: vm.setFilterCustomer,
+    ),
+    _FilterChip(
+      label: 'Priority', value: vm.filterPriority,
+      items: ['', ...AppConstants.priorities],
+      onChanged: vm.setFilterPriority,
+    ),
+    if (vm.filterStatus.isNotEmpty || vm.filterCustomer.isNotEmpty ||
+        vm.filterPriority.isNotEmpty || _searchCtrl.text.isNotEmpty)
+      GestureDetector(
+        onTap: () { vm.clearFilters(); _searchCtrl.clear(); },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+              color: AppTheme.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.red.withOpacity(0.3))),
+          child: const Text('✕ Clear',
+              style: TextStyle(fontSize: 12, color: AppTheme.red)),
+        ),
+      ),
   ];
 }
 
@@ -249,7 +298,27 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-
+// ── Column header ─────────────────────────────────────────────────────
+class _ColumnHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    const style = TextStyle(
+        fontSize: 10.5, fontWeight: FontWeight.w700,
+        color: AppTheme.textDim, letterSpacing: 0.8);
+    return Row(children: const [
+      SizedBox(width: 10),                                // left indent
+      SizedBox(width: 80,  child: Text('ID',          style: style)),
+      Expanded(flex: 5,    child: Text('SUMMARY',     style: style)),
+      SizedBox(width: 10),
+      SizedBox(width: 110, child: Text('CLIENT',      style: style)),
+      SizedBox(width: 100, child: Text('PRIORITY',    style: style)),
+      SizedBox(width: 140, child: Text('STATUS',      style: style)),
+      SizedBox(width: 130, child: Text('ASSIGNED TO', style: style)),
+      SizedBox(width: 90,  child: Text('OPENED',      style: style)),
+      SizedBox(width: 50),
+    ]);
+  }
+}
 
 // ── Issue row ─────────────────────────────────────────────────────────
 class _IssueRow extends StatefulWidget {
@@ -291,7 +360,7 @@ class _IssueRowState extends State<_IssueRow> {
                 bottom: BorderSide(color: Color(0x18FFFFFF))),
           ),
           padding: const EdgeInsets.symmetric(
-              horizontal: 10, vertical: 13),
+              horizontal: 10, vertical: 10),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -337,44 +406,45 @@ class _IssueRowState extends State<_IssueRow> {
               // Client
               SizedBox(width: 110,
                   child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: TagChip(label: issue.customer))),
+                      padding: const EdgeInsets.only(top: 2, bottom: 2),
+                      child: Wrap(children: [TagChip(label: issue.customer)]))),
 
               // Priority
               SizedBox(width: 100,
                   child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: PriorityBadge(priority: issue.priority))),
+                      padding: const EdgeInsets.only(top: 2, bottom: 2),
+                      child: Wrap(children: [PriorityBadge(priority: issue.priority)]))),
 
               // Status
               SizedBox(width: 140,
                   child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: StatusBadge(status: issue.status))),
+                      padding: const EdgeInsets.only(top: 2, bottom: 2),
+                      child: Wrap(children: [StatusBadge(status: issue.status)]))),
 
               // Assigned To
               SizedBox(width: 130,
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: 2, bottom: 2),
                     child: issue.assignedTo.isEmpty
                         ? const Text('—',
                         style: TextStyle(
                             fontSize: 12, color: AppTheme.textDim))
-                        : Row(children: [
-                      _InitialAvatar(name: issue.assignedTo),
-                      const SizedBox(width: 7),
-                      Expanded(child: Text(issue.assignedTo,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 12.5, color: AppTheme.textColor))),
-                    ]),
+                        : Row(crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _InitialAvatar(name: issue.assignedTo),
+                          const SizedBox(width: 7),
+                          Expanded(child: Text(issue.assignedTo,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12.5, color: AppTheme.textColor))),
+                        ]),
                   )),
 
               // Opened
               SizedBox(width: 90,
                   child: Padding(
-                      padding: const EdgeInsets.only(top: 3),
+                      padding: const EdgeInsets.only(top: 4, bottom: 2),
                       child: Text(_fmtDate(issue.createdAt),
                           style: GoogleFonts.jetBrainsMono(
                               fontSize: 10.5, color: AppTheme.textDim)))),
@@ -499,7 +569,7 @@ class _EmptyState extends StatelessWidget {
               child: Text('📭', style: TextStyle(fontSize: 32)))),
       const SizedBox(height: 18),
       Text('No issues found',
-          style: GoogleFonts.cabin(
+          style: GoogleFonts.syne(
               fontSize: 16, fontWeight: FontWeight.w600,
               color: AppTheme.textColor)),
       const SizedBox(height: 6),

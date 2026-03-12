@@ -2,17 +2,23 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:issue_tracker/presentation/admin/admin_screen.dart';
-import 'package:issue_tracker/presentation/auth/admin_approval_screen.dart';
 import 'package:issue_tracker/presentation/auth/login_screen.dart';
 import 'package:issue_tracker/presentation/auth/pending_approval_screen.dart';
 import 'package:issue_tracker/presentation/dashboard/dashboard_screen.dart';
 import 'package:issue_tracker/presentation/issues/create_issue_screen.dart';
 import 'package:issue_tracker/presentation/issues/history_screen.dart';
 import 'package:issue_tracker/presentation/issues/issue_list_screen.dart';
+import 'package:issue_tracker/presentation/projects/create_project_screen.dart';
+import 'package:issue_tracker/presentation/projects/project_screen.dart';
+import 'package:issue_tracker/presentation/projects/project_view_model.dart';
+import 'package:issue_tracker/presentation/setting/setting_screen.dart';
+import 'package:issue_tracker/presentation/setting/settings_view_model.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/issue_repository_impl.dart';
+import 'data/repositories/project_repository_impl.dart';
+import 'data/repositories/settings_repository_impl.dart';
 import 'firebase_options.dart';
 import 'presentation/auth/auth_viewmodel.dart';
 import 'presentation/issues/issue_viewmodel.dart';
@@ -41,6 +47,8 @@ class TechnodysisApp extends StatelessWidget {
           vm.listenToIssues();
           return vm;
         }),
+        ChangeNotifierProvider(create: (_) => ProjectViewModel(ProjectRepositoryImpl())),
+        ChangeNotifierProvider(create: (_) => SettingsViewModel(SettingsRepositoryImpl())),
       ],
       child: MaterialApp(
         title:                     'Technodysis — Issue Tracker',
@@ -102,12 +110,14 @@ class AppRouter extends StatelessWidget {
         return const CreateIssueScreen();
       case '/history':
         return const HistoryScreen();
-      case '/approvals':
-        if (authVm.isAdmin) return const AdminApprovalScreen();
-        return const DashboardScreen();
       case '/admin':
         if (authVm.isAdmin) return const AdminScreen();
         return const DashboardScreen();
+      case '/projects':
+        return const CreateProjectScreen();
+     case '/settings':
+       if (authVm.isAdmin) return const SettingsScreen();
+       return const DashboardScreen();
       case '/dashboard':
       default:
         return const DashboardScreen();

@@ -115,7 +115,7 @@ class _TFieldState extends State<TField> {
       TextFormField(
         controller: widget.controller,
         maxLines: widget.maxLines,
-        minLines: widget.maxLines > 1 ? 3 : null,
+        minLines: widget.maxLines > 1 ? (widget.maxLines < 3 ? widget.maxLines : 3) : null,
         readOnly: widget.readOnly,
         validator: widget.validator,
         keyboardType: widget.keyboardType,
@@ -178,20 +178,24 @@ class _TFieldState extends State<TField> {
 // ─────────────────────────────────────────────────────────
 class TDropdown extends StatelessWidget {
   final String label;
-  final String value;
+  final String? value;
   final List<String> items;
+  final List<String>? displayItems; // optional display labels (parallel to items)
   final void Function(String?) onChanged;
   final String? Function(String?)? validator;
   final bool isRequired;
+  final String? hint;
 
   const TDropdown({
     super.key,
     required this.label,
     required this.value,
     required this.items,
+    this.displayItems,
     required this.onChanged,
     this.validator,
     this.isRequired = false,
+    this.hint,
   });
 
   @override
@@ -217,11 +221,14 @@ class TDropdown extends StatelessWidget {
         style: const TextStyle(fontSize: 13.5, color: AppTheme.textColor),
         icon: const Icon(Icons.keyboard_arrow_down_rounded,
             color: AppTheme.textDim, size: 18),
-        items: items.map((i) => DropdownMenuItem(
-          value: i,
-          child: Text(i, style: const TextStyle(
-              fontSize: 13.5, color: AppTheme.textColor)),
-        )).toList(),
+        items: items.asMap().entries.map((e) {
+          final display = (displayItems != null && displayItems!.length > e.key)
+              ? displayItems![e.key] : e.value;
+          return DropdownMenuItem(
+              value: e.value,
+              child: Text(display, style: const TextStyle(
+                  fontSize: 13.5, color: AppTheme.textColor)));
+        }).toList(),
         onChanged: onChanged,
         decoration: InputDecoration(
           filled: true,
@@ -254,6 +261,7 @@ class TDatePicker extends StatelessWidget {
   final DateTime? value;
   final void Function(DateTime?) onChanged;
   final bool isRequired;
+  final DateTime? firstDate; // optional override; defaults to today
 
   const TDatePicker({
     super.key,
@@ -261,10 +269,14 @@ class TDatePicker extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.isRequired = false,
+    this.firstDate,
   });
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final earliest = firstDate ?? DateTime(today.year, today.month, today.day);
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       RichText(text: TextSpan(
         text: label.toUpperCase(),
@@ -281,10 +293,14 @@ class TDatePicker extends StatelessWidget {
       const SizedBox(height: 6),
       GestureDetector(
         onTap: () async {
+          // If current value is before today, reset initialDate to today
+          final initial = (value != null && !value!.isBefore(earliest))
+              ? value!
+              : earliest;
           final picked = await showDatePicker(
             context: context,
-            initialDate: value ?? DateTime.now(),
-            firstDate: DateTime(2020),
+            initialDate: initial,
+            firstDate: earliest,
             lastDate: DateTime(2035),
             builder: (ctx, child) => Theme(
               data: Theme.of(ctx).copyWith(
@@ -366,8 +382,15 @@ class FormSection extends StatelessWidget {
           child: Row(children: [
             Text(emoji, style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 8),
-            Expanded(       // ← takes all remaining space
-              child: Text(title, overflow: TextOverflow.ellipsis),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: AppTheme.textColor),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
             ),
           ]),
         ),
