@@ -642,7 +642,7 @@ class _ActivityChartState extends State<_ActivityChart> {
               }),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
-                  getTooltipColor: (_) => AppTheme.card,
+                  tooltipBgColor: AppTheme.card,
                   tooltipBorder: const BorderSide(color: AppTheme.border),
                   getTooltipItem: (group, _, rod, __) => BarTooltipItem(
                     '${data[group.x].label}\n',
