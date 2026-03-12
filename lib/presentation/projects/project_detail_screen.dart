@@ -12,35 +12,84 @@ import '../widgets/app_sidebar.dart';
 import 'create_project_screen.dart';
 import 'create_task_screen.dart';
 
-class ProjectDetailScreen extends StatelessWidget {
+class ProjectDetailScreen extends StatefulWidget {
   final String projectId;
   const ProjectDetailScreen({super.key, required this.projectId});
 
   @override
+  State<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
+}
+
+class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+  late Future<ProjectEntity> _projectFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _projectFuture =
+        context.read<ProjectViewModel>().getProject(widget.projectId);
+  }
+
+  void _refreshProject() {
+    setState(() {
+      _projectFuture =
+          context.read<ProjectViewModel>().getProject(widget.projectId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final projVm  = context.watch<ProjectViewModel>();
     final authVm  = context.watch<AuthViewModel>();
-    final isAdmin = authVm.currentUser?.isAdmin ?? false;
+    final projVm  = context.read<ProjectViewModel>();
+    final isAdmin = (authVm.currentUser?.isAdmin ?? false) ||
+        (authVm.currentUser?.isManager ?? false);
 
     return AppShell(
       activePage: SidebarPage.projects,
       child: FutureBuilder<ProjectEntity>(
-        future: projVm.getProject(projectId),
+        future: _projectFuture,
         builder: (context, snap) {
+          if (snap.hasError) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded,
+                      color: AppTheme.red, size: 40),
+                  const SizedBox(height: 12),
+                  Text('Failed to load project',
+                      style: const TextStyle(
+                          color: AppTheme.textMuted, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _refreshProject,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
           if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+                child: CircularProgressIndicator(color: AppTheme.accent));
           }
           final project = snap.data!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header bar
               _ProjectHeader(
-                  project: project, isAdmin: isAdmin, projVm: projVm),
+                project: project,
+                isAdmin: isAdmin,
+                projVm: projVm,
+                onRefresh: _refreshProject,
+              ),
               const Divider(height: 1, color: AppTheme.border),
-              // Body
               Expanded(child: _ProjectBody(
-                  project: project, isAdmin: isAdmin, projVm: projVm)),
+                project: project,
+                isAdmin: isAdmin,
+                projVm: projVm,
+                onRefresh: _refreshProject,
+              )),
             ],
           );
         },
@@ -49,12 +98,20 @@ class ProjectDetailScreen extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Header
+// ─────────────────────────────────────────────────────────────────────────────
 class _ProjectHeader extends StatelessWidget {
   final ProjectEntity project;
   final bool isAdmin;
   final ProjectViewModel projVm;
-  const _ProjectHeader({required this.project,
-    required this.isAdmin, required this.projVm});
+  final VoidCallback onRefresh;
+  const _ProjectHeader({
+    required this.project,
+    required this.isAdmin,
+    required this.projVm,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +127,12 @@ class _ProjectHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(project.name,
-                  style: const TextStyle(fontSize: 18,
-                      fontWeight: FontWeight.w700, color: AppTheme.textColor)),
+              Expanded(
+                child: Text(project.name,
+                    style: const TextStyle(fontSize: 18,
+                        fontWeight: FontWeight.w700, color: AppTheme.textColor),
+                    overflow: TextOverflow.ellipsis),
+              ),
               const SizedBox(width: 10),
               _Badge(_statusLabel(project.status), statusColor),
             ]),
@@ -81,7 +141,6 @@ class _ProjectHeader extends StatelessWidget {
           ],
         )),
         if (isAdmin) ...[
-          // Delete button
           IconButton(
             tooltip: 'Delete Project',
             icon: const Icon(Icons.delete_outline_rounded,
@@ -136,8 +195,8 @@ class _ProjectHeader extends StatelessWidget {
                             SizedBox(width: 8),
                             Expanded(child: Text(
                                 'This will permanently delete the project and all its tasks. This cannot be undone.',
-                                style: TextStyle(fontSize: 12,
-                                    color: AppTheme.red))),
+                                style: TextStyle(
+                                    fontSize: 12, color: AppTheme.red))),
                           ]),
                         ),
                       ]),
@@ -158,28 +217,46 @@ class _ProjectHeader extends StatelessWidget {
                 ),
               );
               if (confirmed == true && context.mounted) {
-                await context.read<ProjectViewModel>().deleteProject(project.id);
-                if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/projects', (_) => false);
+                await context
+                    .read<ProjectViewModel>()
+                    .deleteProject(project.id);
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, '/projects', (_) => false);
+                }
               }
             },
           ),
           const SizedBox(width: 4),
           OutlinedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => CreateProjectScreen(existing: project))),
+            onPressed: () async {
+              await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          CreateProjectScreen(existing: project)));
+              // Refresh project data after potential edit
+              onRefresh();
+            },
             icon: const Icon(Icons.edit_outlined, size: 14),
             label: const Text('Edit', style: TextStyle(fontSize: 12)),
             style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
           ),
           const SizedBox(width: 8),
           ElevatedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => CreateTaskScreen(projectId: project.id, projectName: project.name))),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CreateTaskScreen(
+                        projectId: project.id,
+                        projectName: project.name))),
             icon: const Icon(Icons.add_rounded, size: 14),
             label: const Text('Add Task', style: TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
           ),
         ],
       ]),
@@ -187,26 +264,36 @@ class _ProjectHeader extends StatelessWidget {
   }
 
   Color _statusColor(String s) => switch (s) {
-    'active'    => AppTheme.green,
-    'on_hold'   => AppTheme.orange,
-    'completed' => AppTheme.accent,
-    _           => AppTheme.red,
-  };
+        'active'    => AppTheme.green,
+        'on_hold'   => AppTheme.orange,
+        'completed' => AppTheme.accent,
+        _           => AppTheme.red,
+      };
   String _statusLabel(String s) => switch (s) {
-    'active'    => 'Active',
-    'on_hold'   => 'On Hold',
-    'completed' => 'Completed',
-    _           => 'Cancelled',
-  };
+        'active'    => 'Active',
+        'on_hold'   => 'On Hold',
+        'completed' => 'Completed',
+        _           => 'Cancelled',
+      };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Body
+// ─────────────────────────────────────────────────────────────────────────────
 class _ProjectBody extends StatefulWidget {
   final ProjectEntity project;
   final bool isAdmin;
   final ProjectViewModel projVm;
-  const _ProjectBody({required this.project,
-    required this.isAdmin, required this.projVm});
-  @override State<_ProjectBody> createState() => _ProjectBodyState();
+  final VoidCallback onRefresh;
+  const _ProjectBody({
+    required this.project,
+    required this.isAdmin,
+    required this.projVm,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_ProjectBody> createState() => _ProjectBodyState();
 }
 
 class _ProjectBodyState extends State<_ProjectBody> {
@@ -214,56 +301,73 @@ class _ProjectBodyState extends State<_ProjectBody> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width  = MediaQuery.of(context).size.width;
     final isWide = width > 900;
 
     return StreamBuilder<List<TaskEntity>>(
       stream: widget.projVm.getProjectTasks(widget.project.id),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Center(
+            child: Text('Error loading tasks',
+                style: const TextStyle(color: AppTheme.red)),
+          );
+        }
+
         final allTasks = snap.data ?? [];
         final filtered = _taskFilter == 'All'
             ? allTasks
-            : allTasks.where((t) =>
-        t.status.toLowerCase() == _taskFilter.toLowerCase()).toList();
+            : allTasks
+                .where((t) =>
+                    t.status.toLowerCase() == _taskFilter.toLowerCase())
+                .toList();
 
         if (isWide) {
           return Row(children: [
-            // Left: project info
-            SizedBox(width: 280,
+            SizedBox(
+                width: 280,
                 child: _ProjectInfoPanel(project: widget.project)),
             const VerticalDivider(width: 1, color: AppTheme.border),
-            // Right: tasks
-            Expanded(child: _TasksPanel(
-              tasks: filtered, allTasks: allTasks,
-              filter: _taskFilter, isAdmin: widget.isAdmin,
-              projVm: widget.projVm,
-              projectId: widget.project.id,
-              projectName: widget.project.name,
-              onFilterChange: (f) => setState(() => _taskFilter = f),
-            )),
-          ]);
-        } else {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(children: [
-              _ProjectInfoPanel(project: widget.project),
-              const SizedBox(height: 20),
-              _TasksPanel(
-                tasks: filtered, allTasks: allTasks,
-                filter: _taskFilter, isAdmin: widget.isAdmin,
+            Expanded(
+              child: _TasksPanel(
+                tasks: filtered,
+                allTasks: allTasks,
+                filter: _taskFilter,
+                isAdmin: widget.isAdmin,
                 projVm: widget.projVm,
                 projectId: widget.project.id,
                 projectName: widget.project.name,
                 onFilterChange: (f) => setState(() => _taskFilter = f),
               ),
-            ]),
-          );
+            ),
+          ]);
         }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(children: [
+            _ProjectInfoPanel(project: widget.project),
+            const SizedBox(height: 20),
+            _TasksPanel(
+              tasks: filtered,
+              allTasks: allTasks,
+              filter: _taskFilter,
+              isAdmin: widget.isAdmin,
+              projVm: widget.projVm,
+              projectId: widget.project.id,
+              projectName: widget.project.name,
+              onFilterChange: (f) => setState(() => _taskFilter = f),
+            ),
+          ]),
+        );
       },
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Project info panel
+// ─────────────────────────────────────────────────────────────────────────────
 class _ProjectInfoPanel extends StatelessWidget {
   final ProjectEntity project;
   const _ProjectInfoPanel({required this.project});
@@ -273,23 +377,26 @@ class _ProjectInfoPanel extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Progress
         const Text('PROGRESS', style: TextStyle(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: AppTheme.textDim, letterSpacing: 1.2)),
         const SizedBox(height: 8),
-        ClipRRect(borderRadius: BorderRadius.circular(4),
+        ClipRRect(
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-                value: project.progress, minHeight: 8,
+                value: project.progress,
+                minHeight: 8,
                 backgroundColor: AppTheme.border,
-                valueColor: const AlwaysStoppedAnimation(AppTheme.accent))),
+                valueColor:
+                    const AlwaysStoppedAnimation(AppTheme.accent))),
         const SizedBox(height: 6),
-        Text('${(project.progress * 100).round()}% complete'
+        Text(
+            '${(project.progress * 100).round()}% complete'
             ' (${project.taskCount - project.openTaskCount}/${project.taskCount} tasks)',
-            style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted)),
+            style: const TextStyle(
+                fontSize: 11.5, color: AppTheme.textMuted)),
         const SizedBox(height: 20),
 
-        // Details
         _InfoRow(Icons.business_outlined, 'Client', project.client),
         _InfoRow(Icons.flag_outlined, 'Priority', project.priority),
         if (project.endDate != null)
@@ -301,7 +408,6 @@ class _ProjectInfoPanel extends StatelessWidget {
             DateFormat('dd MMM yyyy').format(project.createdAt)),
         const SizedBox(height: 16),
 
-        // Description
         if (project.description.isNotEmpty) ...[
           const Text('DESCRIPTION', style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w700,
@@ -313,7 +419,6 @@ class _ProjectInfoPanel extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
-        // Members
         const Text('TEAM', style: TextStyle(
             fontSize: 10, fontWeight: FontWeight.w700,
             color: AppTheme.textDim, letterSpacing: 1.2)),
@@ -323,7 +428,8 @@ class _ProjectInfoPanel extends StatelessWidget {
               style: TextStyle(fontSize: 12, color: AppTheme.textDim))
         else
           Text('${project.memberUids.length} member(s) assigned',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.textMuted)),
       ]),
     );
   }
@@ -333,42 +439,61 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String label, value;
   const _InfoRow(this.icon, this.label, this.value);
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Row(children: [
-      Icon(icon, size: 14, color: AppTheme.textDim),
-      const SizedBox(width: 8),
-      Text('$label: ', style: const TextStyle(
-          fontSize: 12, color: AppTheme.textMuted)),
-      Expanded(child: Text(value, style: const TextStyle(
-          fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textColor),
-          overflow: TextOverflow.ellipsis)),
-    ]),
-  );
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(children: [
+          Icon(icon, size: 14, color: AppTheme.textDim),
+          const SizedBox(width: 8),
+          Text('$label: ',
+              style: const TextStyle(
+                  fontSize: 12, color: AppTheme.textMuted)),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textColor),
+                  overflow: TextOverflow.ellipsis)),
+        ]),
+      );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Tasks panel
+// ─────────────────────────────────────────────────────────────────────────────
 class _TasksPanel extends StatelessWidget {
   final List<TaskEntity> tasks, allTasks;
   final String filter, projectId, projectName;
   final bool isAdmin;
   final ProjectViewModel projVm;
   final ValueChanged<String> onFilterChange;
-  const _TasksPanel({required this.tasks, required this.allTasks,
-    required this.filter, required this.projectId, required this.projectName,
-    required this.isAdmin, required this.projVm, required this.onFilterChange});
+  const _TasksPanel({
+    required this.tasks,
+    required this.allTasks,
+    required this.filter,
+    required this.projectId,
+    required this.projectName,
+    required this.isAdmin,
+    required this.projVm,
+    required this.onFilterChange,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const statuses = ['All', 'todo', 'in_progress', 'review', 'done', 'cancelled'];
+    const statuses = [
+      'All', 'todo', 'in_progress', 'review', 'done', 'cancelled'
+    ];
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Filter chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: Row(children: statuses.map((s) {
-            final count = s == 'All' ? allTasks.length
+          child: Row(
+              children: statuses.map((s) {
+            final count = s == 'All'
+                ? allTasks.length
                 : allTasks.where((t) => t.status == s).length;
             final selected = filter == s;
             return Padding(
@@ -379,8 +504,11 @@ class _TasksPanel extends StatelessWidget {
                 onSelected: (_) => onFilterChange(s),
                 selectedColor: AppTheme.accent.withOpacity(0.15),
                 checkmarkColor: AppTheme.accent,
-                labelStyle: TextStyle(fontSize: 11.5,
-                    color: selected ? AppTheme.accent : AppTheme.textMuted),
+                labelStyle: TextStyle(
+                    fontSize: 11.5,
+                    color: selected
+                        ? AppTheme.accent
+                        : AppTheme.textMuted),
               ),
             );
           }).toList()),
@@ -388,125 +516,157 @@ class _TasksPanel extends StatelessWidget {
         const SizedBox(height: 16),
 
         if (tasks.isEmpty)
-          const Expanded(child: Center(child: Text('No tasks',
-              style: TextStyle(color: AppTheme.textDim))))
+          const Expanded(
+              child: Center(
+                  child: Text('No tasks',
+                      style: TextStyle(color: AppTheme.textDim))))
         else
-          Expanded(child: ListView.separated(
-            itemCount: tasks.length,
-            separatorBuilder: (_, __) =>
-            const Divider(height: 1, color: AppTheme.border),
-            itemBuilder: (_, i) => _TaskRow(
-                task: tasks[i], isAdmin: isAdmin, projVm: projVm,
-                projectId: projectId, projectName: projectName),
-          )),
+          Expanded(
+            child: ListView.separated(
+              itemCount: tasks.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, color: AppTheme.border),
+              itemBuilder: (_, i) => _TaskRow(
+                task: tasks[i],
+                isAdmin: isAdmin,
+                projVm: projVm,
+                projectId: projectId,
+                projectName: projectName,
+              ),
+            ),
+          ),
       ]),
     );
   }
 
   String _statusLabel(String s) => switch (s) {
-    'All'         => 'All',
-    'todo'        => 'To Do',
-    'in_progress' => 'In Progress',
-    'review'      => 'Review',
-    'done'        => 'Done',
-    'cancelled'   => 'Cancelled',
-    _             => s,
-  };
+        'All'         => 'All',
+        'todo'        => 'To Do',
+        'in_progress' => 'In Progress',
+        'review'      => 'Review',
+        'done'        => 'Done',
+        'cancelled'   => 'Cancelled',
+        _             => s,
+      };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Task row
+// ─────────────────────────────────────────────────────────────────────────────
 class _TaskRow extends StatelessWidget {
   final TaskEntity task;
   final bool isAdmin;
   final ProjectViewModel projVm;
   final String projectId;
   final String projectName;
-  const _TaskRow({required this.task, required this.isAdmin,
-    required this.projVm, required this.projectId, required this.projectName});
+  const _TaskRow({
+    required this.task,
+    required this.isAdmin,
+    required this.projVm,
+    required this.projectId,
+    required this.projectName,
+  });
 
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor(task.status);
-    final authVm = context.read<AuthViewModel>();
+    final authVm  = context.read<AuthViewModel>();
     final canEdit = isAdmin ||
-        authVm.currentUser?.uid == task.assignedToUid;
+        (authVm.currentUser?.uid != null &&
+            authVm.currentUser!.uid == task.assignedToUid);
 
     return Container(
       color: AppTheme.card,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        // Status indicator
-        Container(width: 4, height: 40,
+        Container(
+            width: 4,
+            height: 40,
             decoration: BoxDecoration(
                 color: statusColor, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 12),
 
-        // Content
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text(task.title,
-                  style: TextStyle(
-                      fontSize: 13.5, fontWeight: FontWeight.w600,
-                      color: AppTheme.textColor,
-                      decoration: task.isDone
-                          ? TextDecoration.lineThrough : null))),
+              Expanded(
+                  child: Text(task.title,
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textColor,
+                          decoration: task.isDone
+                              ? TextDecoration.lineThrough
+                              : null))),
               _PriorityChip(task.priority),
             ]),
             const SizedBox(height: 4),
             Row(children: [
-              Icon(Icons.person_outline_rounded, size: 12, color: AppTheme.textDim),
+              Icon(Icons.person_outline_rounded,
+                  size: 12, color: AppTheme.textDim),
               const SizedBox(width: 4),
               Text(task.assignedToName,
-                  style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted)),
+                  style: const TextStyle(
+                      fontSize: 11.5, color: AppTheme.textMuted)),
               if (task.dueDate != null) ...[
                 const SizedBox(width: 12),
-                Icon(Icons.schedule_rounded, size: 12,
-                    color: task.isOverdue ? AppTheme.red : AppTheme.textDim),
+                Icon(Icons.schedule_rounded,
+                    size: 12,
+                    color:
+                        task.isOverdue ? AppTheme.red : AppTheme.textDim),
                 const SizedBox(width: 3),
-                Text(DateFormat('dd MMM').format(task.dueDate!),
-                    style: TextStyle(fontSize: 11.5,
-                        color: task.isOverdue ? AppTheme.red : AppTheme.textMuted)),
+                Text(
+                    DateFormat('dd MMM').format(task.dueDate!),
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        color: task.isOverdue
+                            ? AppTheme.red
+                            : AppTheme.textMuted)),
               ],
             ]),
-          ],
-        )),
+          ]),
+        ),
         const SizedBox(width: 12),
 
-        // Status dropdown
         if (canEdit)
           DropdownButton<String>(
             value: task.status,
             isDense: true,
             underline: const SizedBox(),
-            style: const TextStyle(fontSize: 12, color: AppTheme.textColor),
-            items: ['todo','in_progress','review','done','cancelled']
+            style: const TextStyle(
+                fontSize: 12, color: AppTheme.textColor),
+            items: ['todo', 'in_progress', 'review', 'done', 'cancelled']
                 .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(_statusLabel(s),
-                    style: TextStyle(color: _statusColor(s)))))
+                    value: s,
+                    child: Text(_statusLabel(s),
+                        style: TextStyle(color: _statusColor(s)))))
                 .toList(),
             onChanged: (s) {
               if (s != null) projVm.updateTaskStatus(task.id, s);
             },
           ),
 
-        // Edit/Delete (admin only)
         if (isAdmin)
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded,
                 size: 16, color: AppTheme.textDim),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit',
-                  child: Text('Edit Task')),
-              const PopupMenuItem(value: 'delete',
-                  child: Text('Delete', style: TextStyle(color: AppTheme.red))),
+              const PopupMenuItem(
+                  value: 'edit', child: Text('Edit Task')),
+              const PopupMenuItem(
+                  value: 'delete',
+                  child: Text('Delete',
+                      style: TextStyle(color: AppTheme.red))),
             ],
             onSelected: (v) {
               if (v == 'edit') {
-                Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => CreateTaskScreen(
-                        projectId: projectId, projectName: projectName, existing: task)));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => CreateTaskScreen(
+                            projectId: projectId,
+                            projectName: projectName,
+                            existing: task)));
               } else {
                 projVm.deleteTask(task.id);
               }
@@ -517,55 +677,67 @@ class _TaskRow extends StatelessWidget {
   }
 
   Color _statusColor(String s) => switch (s) {
-    'todo'        => AppTheme.textDim,
-    'in_progress' => AppTheme.blue,
-    'review'      => AppTheme.orange,
-    'done'        => AppTheme.green,
-    'cancelled'   => AppTheme.red,
-    _             => AppTheme.textDim,
-  };
+        'todo'        => AppTheme.textDim,
+        'in_progress' => AppTheme.blue,
+        'review'      => AppTheme.orange,
+        'done'        => AppTheme.green,
+        'cancelled'   => AppTheme.red,
+        _             => AppTheme.textDim,
+      };
   String _statusLabel(String s) => switch (s) {
-    'todo'        => 'To Do',
-    'in_progress' => 'In Progress',
-    'review'      => 'Review',
-    'done'        => 'Done',
-    'cancelled'   => 'Cancelled',
-    _             => s,
-  };
+        'todo'        => 'To Do',
+        'in_progress' => 'In Progress',
+        'review'      => 'Review',
+        'done'        => 'Done',
+        'cancelled'   => 'Cancelled',
+        _             => s,
+      };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared widgets
+// ─────────────────────────────────────────────────────────────────────────────
 class _PriorityChip extends StatelessWidget {
   final String priority;
   const _PriorityChip(this.priority);
+
   Color get color => switch (priority) {
-    'Critical' => AppTheme.red,
-    'High'     => AppTheme.orange,
-    'Medium'   => AppTheme.blue,
-    _          => AppTheme.textDim,
-  };
+        'Critical' => AppTheme.red,
+        'High'     => AppTheme.orange,
+        'Medium'   => AppTheme.blue,
+        _          => AppTheme.textDim,
+      };
+
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(10)),
-    child: Text(priority,
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10)),
+        child: Text(priority,
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color)),
+      );
 }
 
 class _Badge extends StatelessWidget {
   final String text;
   final Color color;
   const _Badge(this.text, this.color);
+
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3))),
-    child: Text(text, style: TextStyle(
-        fontSize: 10.5, fontWeight: FontWeight.w600, color: color)),
-  );
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withOpacity(0.3))),
+        child: Text(text,
+            style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: color)),
+      );
 }
