@@ -49,10 +49,16 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
   const _MobileAppBar({required this.activePage});
 
   static const _titles = {
-    SidebarPage.dashboard: 'Dashboard',
-    SidebarPage.issues:    'All Issues',
-    SidebarPage.create:    'Create Issue',
-    SidebarPage.history:   'History',
+    SidebarPage.userDashboard:       'My Dashboard',
+    SidebarPage.adminDashboard:      'Dashboard',
+    SidebarPage.superAdminDashboard: 'Dashboard',
+    SidebarPage.dashboard:           'Dashboard',
+    SidebarPage.issues:              'All Issues',
+    SidebarPage.create:              'Create Issue',
+    SidebarPage.history:             'History',
+    SidebarPage.projects:            'Projects',
+    SidebarPage.admin:               'Admin Panel',
+    SidebarPage.settings:            'Settings',
   };
 
   @override
